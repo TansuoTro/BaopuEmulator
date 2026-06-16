@@ -30,6 +30,7 @@ interface AssessmentStore {
   answerDynamic: (a:string)=>void;
   answerScenario: (a:string)=>void;
   answerOpen: (a:string)=>void;
+  goBack: ()=>void;
   setDynamicQuestions: (qs:DynamicQuestion[])=>void;
   setScenarioQuestions: (qs:DynamicQuestion[])=>void;
   updateProfileDynamic: (dim: keyof UserProfile, delta: number)=>void;
@@ -117,6 +118,30 @@ export const useAssessmentStore = create<AssessmentStore>()(
         },
         matchedMajors:matched,
       });
+    },
+    goBack:()=>{
+      const s=get();
+      if(s.phase==='fixed'&&s.fixedIndex>0){
+        const newIdx=s.fixedIndex-1;
+        const newAnswers={...s.fixedAnswers};
+        delete newAnswers[FIXED_QUESTIONS[newIdx].id];
+        // Recompute profile from scratch excluding the reverted answer
+        let p={...DEFAULT_PROFILE};
+        for(let i=0;i<newIdx;i++){
+          const q=FIXED_QUESTIONS[i];const a=newAnswers[q.id];
+          if(a)p=scoreFixedAnswer(p,q,a).profile;
+        }
+        set({profile:p,fixedAnswers:newAnswers,fixedIndex:newIdx,matchedMajors:matchMajors(p)});
+      }else if(s.phase==='dynamic'&&s.dynamicIndex>0){
+        const idx=s.dynamicIndex-1;const ans={...s.dynamicAnswers};delete ans[s.dynamicQuestions[idx]?.id||''];
+        set({dynamicAnswers:ans,dynamicIndex:idx});
+      }else if(s.phase==='scenario'&&s.scenarioIndex>0){
+        const idx=s.scenarioIndex-1;const ans={...s.scenarioAnswers};delete ans[s.scenarioQuestions[idx]?.id||''];
+        set({scenarioAnswers:ans,scenarioIndex:idx});
+      }else if(s.phase==='open'&&s.openIndex>0){
+        const idx=s.openIndex-1;const ans={...s.openAnswers};delete ans[OPEN_QUESTIONS[idx]?.id||''];
+        set({openAnswers:ans,openIndex:idx});
+      }
     },
     addError:m=>set(s=>({errors:[...s.errors,m],phase:'error'})),
     clearErrors:()=>set({errors:[]}),

@@ -279,26 +279,29 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="center-col">
-            <div className="lg:hidden p-3 rounded-xl border text-xs text-white/40 bg-white/5 border-white/10">{phase === 'fixed' ? '基础画像' : phase === 'dynamic' ? '深度消歧' : '动机补足'} {curQ + 1}/{totalQ}</div>
+            <div className="lg:hidden p-3 rounded-xl border text-xs text-white/40 bg-white/5 border-white/10 flex items-center justify-between">
+              <span>{phase === 'fixed' ? '基础画像' : phase === 'dynamic' ? '深度消歧' : phase === 'scenario' ? '情景决断' : '动机补足'} {curQ + 1}/{totalQ}</span>
+              {curQ > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300 text-xs"><i className="fas fa-arrow-left mr-1"/>上一题</button>}
+            </div>
             <div className="scene-box"><UniverseScene majors={store.matchedMajors} onMajorClick={setSelectedMajor} /></div>
             <div className="question-area">
               {phase === 'fixed' && FIXED_QUESTIONS[store.fixedIndex] && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200 shadow-sm'}`}>
-                  <div className="text-xs text-white/40">{store.fixedIndex + 1}/18</div>
+                  <div className="text-xs text-white/40 flex items-center justify-between">{store.fixedIndex + 1}/18{store.fixedIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回上题</button>}</div>
                   <p className="text-white/90">{FIXED_QUESTIONS[store.fixedIndex].stem}</p>
                   <div className="space-y-2">{FIXED_QUESTIONS[store.fixedIndex].options.map(o => <button key={o.key} onClick={() => handleFixedAnswer(o.key)} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-indigo-400 hover:bg-indigo-500/10 text-white/70 text-sm transition-all"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div>
                 </div>
               )}
               {phase === 'dynamic' && curDynamic && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-purple-500/20' : 'bg-white border-purple-200 shadow-sm'}`}>
-                  <div className="flex items-center gap-2 text-xs"><span className="text-purple-400">消歧 {store.dynamicIndex + 1}/{store.dynamicQuestions.length}</span></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-purple-400">消歧 {store.dynamicIndex + 1}/{store.dynamicQuestions.length}</span>{store.dynamicIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90">{curDynamic.stem}</p>
                   {curDynamic.question_type === 'choice' ? <div className="space-y-2">{curDynamic.options.map(o => <button key={o.key} onClick={() => handleDynamicAnswer(o.key)} disabled={loading} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-purple-400 hover:bg-purple-500/10 text-white/70 text-sm transition-all disabled:opacity-50"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div> : <div><input type="text" onKeyDown={e => { if (e.key === 'Enter') handleDynamicAnswer((e.target as HTMLInputElement).value); }} placeholder={curDynamic.input_hint || '输入回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm" /></div>}
                 </div>
               )}
               {phase === 'scenario' && curScenario && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-rose-500/20' : 'bg-white border-rose-200 shadow-sm'}`}>
-                  <div className="flex items-center gap-2 text-xs"><span className="text-rose-400">情景 {store.scenarioIndex + 1}/{store.scenarioQuestions.length}</span><span className="text-white/30">· 请打字输入你的真实想法</span></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-rose-400">情景 {store.scenarioIndex + 1}/{store.scenarioQuestions.length}</span>{store.scenarioIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90 leading-relaxed">{curScenario.stem}</p>
                   <textarea ref={openRef} rows={4} placeholder={curScenario.input_hint || '请描述你的做法和理由...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleScenarioAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交回答</button>
@@ -306,7 +309,7 @@ const App: React.FC = () => {
               )}
               {phase === 'open' && OPEN_QUESTIONS[store.openIndex] && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-emerald-500/20' : 'bg-white border-emerald-200 shadow-sm'}`}>
-                  <div className="text-xs text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/3</div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/3</span>{store.openIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90">{OPEN_QUESTIONS[store.openIndex].stem}</p>
                   <textarea ref={openRef} rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleOpenAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交</button>
