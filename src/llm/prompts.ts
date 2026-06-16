@@ -118,6 +118,19 @@ export function buildRecommendPrompt(
       target_provinces: gaokaoInfo.target_provinces,
       career_intention: gaokaoInfo.career_intention,
     },
-    instruction: `毕业意向="${gaokaoInfo.career_intention}"。综合所有数据输出：(1)personality_sketch；(2)personality_axes——基于用户的所有回答（特别是情景题和开放题的文本内容），为以下4个对立维度打分(0~100，50=平衡)：接受vs怀疑(0=完全接受他人观点,100=习惯性质疑和批判)、保守vs激进(0=极度保守求稳,100=极度激进冒险)、经验vs知识(0=完全依赖个人经验,100=完全依赖系统知识/理论)、权威vs独立(0=完全听从权威和规则,100=完全独立自主决定)；(3)top_majors—Top5按score降序，每专业给match_reason、future_path(根据毕业意向+每个维度的打分去分析+高考数据)；(4)final_note。output_format:{"type":"recommend","personality_sketch":"...","personality_axes":{"接受vs怀疑":55,"保守vs激进":40,"经验vs知识":70,"权威vs独立":65},"top_majors":[...],"final_note":"..."}`,
+    instruction: `毕业意向="${gaokaoInfo.career_intention}"。高考: ${gaokaoInfo.province}/${gaokaoInfo.total_score}分/排名${gaokaoInfo.provincial_rank||'未知'}/${gaokaoInfo.gaokao_type}/数学${gaokaoInfo.math}/语文${gaokaoInfo.chinese}。
+
+综合所有数据输出：
+(1) personality_sketch——3~5句人物侧写
+(2) personality_axes——4个对立维度0~100打分
+(3) top_majors——Top5按score降序。关键是每个专业的future_path必须写！根据毕业意向+高考分数排名+选科+该专业特征，给每个专业分析最合理的去向：
+  - 考公: "本专业考公岗位较多(如XX局/XX部门)，建议大三开始备考行测申论"
+  - 升学: "本专业建议优先升学，考研方向→XX，研究生后就业面更宽"
+  - 求职: "本专业就业面广，可投递XX行业，建议大二开始实习积累经验"
+  - 灵活就业: "本专业适合自由职业/创业，可结合XX方向建立个人品牌"
+  - 不清楚: 根据分数排名判断竞争力，给出最合理去向建议
+(4) final_note
+
+output_format:{"type":"recommend","personality_sketch":"...","personality_axes":{"接受vs怀疑":55,"保守vs激进":40,"经验vs知识":70,"权威vs独立":65},"top_majors":[{"major_name":"计算机科学与技术","score":88,"match_reason":["数学强","逻辑好"],"future_path":"建议优先升学→AI方向研究生→大厂算法工程师","risk":["压力大"],"suitable_for":["喜欢独立解决问题"],"not_suitable_for":["偏好纯人文"]}],"final_note":"..."}`,
   });
 }
