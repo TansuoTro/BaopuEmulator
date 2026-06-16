@@ -11,10 +11,12 @@ import PersonalityAxes from './components/results/PersonalityAxes';
 import html2canvas from 'html2canvas';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
-log('info','App','BaopuEmulator V4 启动',{majors:44,questions:18,backend:'Netlify proxy'});
+log('info','App','BaopuEmulator V4 启动',{majors:44,questions:18,backend:'Netlify proxy + local fallback'});
 
-/* ── API through Netlify proxy ── */
-const API = '/.netlify/functions/api-proxy';
+/* ── API: proxy in production, direct DeepSeek in local dev ── */
+const PROXY = '/.netlify/functions/api-proxy';
+const DEEPSEEK = 'https://api.deepseek.com/v1/chat/completions';
+const DEV_KEY = 'sk-591f2f855fad483ba302d48d8ad3aea2';
 
 function cleanJson(raw: string): string {
   let c = raw.trim();
@@ -25,11 +27,17 @@ function cleanJson(raw: string): string {
 }
 
 async function ds(_apiKey: string, prompt: string): Promise<unknown> {
-  const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
+  // Try Netlify proxy first (production)
+  try {
+    const res = await fetch(PROXY, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
+    if(res.ok){const d=await res.json();if(d.content)return JSON.parse(cleanJson(d.content));}
+  } catch { /* proxy unavailable, fall back to direct */ }
+
+  // Direct DeepSeek call (local dev fallback)
+  const res = await fetch(DEEPSEEK, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${DEV_KEY}`}, body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],temperature:0.7,max_tokens:4096,response_format:{type:'json_object'}}) });
   if(!res.ok){const t=await res.text();throw new Error(`API ${res.status}: ${t.slice(0,200)}`);}
-  const d=await res.json();
-  if(!d.content)throw new Error('Empty proxy response');
-  return JSON.parse(cleanJson(d.content));
+  const d=await res.json();const raw=d.choices?.[0]?.message?.content;if(!raw)throw new Error('Empty');
+  return JSON.parse(cleanJson(raw));
 }
 /* ── Extracted GaokaoForm component (no hooks-in-conditionals) ── */
 const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onSubmit }) => {
@@ -269,17 +277,30 @@ const App: React.FC = () => {
         allowTaint: true,
         useCORS: true,
         onclone: (clonedDoc) => {
-          // Strip oklab color functions that html2canvas can't parse
-          const style = clonedDoc.createElement('style');
-          style.textContent = `
+          // Remove ALL style tags that may contain oklab()
+          clonedDoc.querySelectorAll('style').forEach(s => s.remove());
+          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
+          // Inject safe explicit styles
+          const safe = clonedDoc.createElement('style');
+          safe.textContent = `
             * { color-scheme: dark !important; }
-            .text-white\\/90, .text-white\\/80, .text-white\\/70, .text-white\\/60, .text-white\\/50, .text-white\\/40, .text-white\\/30 { color: #e2e8f0 !important; }
-            .bg-white\\/5 { background: rgba(255,255,255,0.05) !important; }
-            .bg-white\\/10 { background: rgba(255,255,255,0.1) !important; }
-            .border-white\\/10 { border-color: rgba(255,255,255,0.1) !important; }
-            .border-white\\/20 { border-color: rgba(255,255,255,0.2) !important; }
+            body, div { background: #080816 !important; color: #e2e8f0 !important; }
+            .bg-white\\/5, .bg-white\\/10, [class*="bg-white"] { background: rgba(255,255,255,0.05) !important; }
+            [class*="bg-black"] { background: rgba(0,0,0,0.2) !important; }
+            [class*="border-white"] { border-color: rgba(255,255,255,0.1) !important; }
+            [class*="text-white"] { color: #e2e8f0 !important; }
+            .text-emerald-300, [class*="text-emerald"] { color: #6ee7b7 !important; }
+            .text-amber-300, [class*="text-amber"] { color: #fcd34d !important; }
+            .text-indigo-300, [class*="text-indigo"] { color: #a5b4fc !important; }
+            .text-rose-300, [class*="text-rose"] { color: #fda4af !important; }
+            .text-purple-300, [class*="text-purple"] { color: #c4b5fd !important; }
+            [class*="bg-indigo"] { background: #4f46e5 !important; }
+            [class*="bg-emerald"] { background: #059669 !important; }
+            [class*="bg-amber"] { background: #d97706 !important; }
+            button { color: white !important; }
+            img, svg, canvas { display: block; }
           `;
-          clonedDoc.head.appendChild(style);
+          clonedDoc.head.appendChild(safe);
         },
       });
       const link = document.createElement('a');
