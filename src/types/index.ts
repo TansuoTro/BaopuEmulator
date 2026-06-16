@@ -172,6 +172,18 @@ export const PROVINCE_MAX_SCORE: Record<string, number> = {
   '陕西':750,'甘肃':750,'青海':750,'内蒙古':750,'广西':750,'西藏':750,'宁夏':750,'新疆':750,
 };
 
+/* Shanghai special rules */
+export function getSubjectMax(province: string, subject: string, gaokaoType: string): number {
+  if (province === '上海') {
+    if (subject === 'elective') return gaokaoType === '新高考' ? 70 : 150;
+    if (subject === 'chinese' || subject === 'math' || subject === 'english') return 150;
+    return 100;
+  }
+  if (subject === 'elective') return gaokaoType === '新高考' ? 100 : 300;
+  if (subject === 'chinese' || subject === 'math' || subject === 'english') return 150;
+  return 100;
+}
+
 export const GAOKAO_YEARS = Array.from({length:26},(_,i)=>2025-i);
 
 export const NEW_GAOKAO_SUBJECTS = ['物理','化学','生物','历史','政治','地理','技术'];
