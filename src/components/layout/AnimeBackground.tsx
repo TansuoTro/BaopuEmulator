@@ -9,7 +9,7 @@ const AnimeBackground = () => {
 
   const fetchNew = () => setNextUrl(API + '?t=' + Date.now());
 
-  useEffect(() => { fetchNew(); const t = setInterval(fetchNew, 8000); return () => clearInterval(t); }, []);
+  useEffect(() => { fetchNew(); const t = setInterval(fetchNew, 16000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
     if (!nextUrl) return;

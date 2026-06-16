@@ -9,6 +9,7 @@ import { useClickParticles } from './utils/particles';
 import UniverseScene from './components/3d/UniverseScene';
 import PersonalityAxes from './components/results/PersonalityAxes';
 import AnimeBackground from './components/layout/AnimeBackground';
+import ThemePanel from './components/layout/ThemePanel';
 import html2canvas from 'html2canvas';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -180,6 +181,9 @@ const App: React.FC = () => {
   const [followupHint, setFollowupHint] = useState('');
   const [tookGaokao, setTookGaokao] = useState<boolean | null>(null);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+  const [themeBlur, setThemeBlur] = useState(16);
+  const [themeOpacity, setThemeOpacity] = useState(55);
+  const [showThemePanel, setShowThemePanel] = useState(false);
   const loadingRef = useRef(false);
   const submittingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
@@ -382,7 +386,8 @@ const App: React.FC = () => {
   return (
     <>
       <AnimeBackground />
-      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/60 text-white' : 'bg-zinc-50/70 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
+      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/60 text-white' : 'bg-zinc-50/70 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}
+      style={{'--glass-blur':`${themeBlur}px`,'--bg-opacity':`${themeOpacity}%`} as React.CSSProperties}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-xl ${isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
@@ -393,6 +398,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-3">
           {inAssess && <span className="text-xs text-white/40">{phase === 'fixed' ? '固定' : phase === 'dynamic' ? '消歧' : phase === 'scenario' ? '情景' : '开放'} {curQ + 1}/{totalQ}</span>}
           <button onClick={store.toggleTheme} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-zinc-100 text-zinc-500'}`}><i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`} /></button>
+          <button onClick={() => setShowThemePanel(true)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-zinc-100 text-zinc-500'}`} title="主题设置"><i className="fas fa-palette" /></button>
         </div>
       </header>
 
@@ -446,13 +452,13 @@ const App: React.FC = () => {
         <div className={`assessment-shell ${isDark ? '' : 'assessment-shell-light'}`}>
           <div className="hidden lg:block left-col">
             <div className={`p-4 rounded-xl border glass ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/40 border-zinc-200'}`}>
-              <h3 className="text-xs font-bold mb-3">{phase === 'fixed' ? '阶段一：基础画像' : phase === 'dynamic' ? '阶段二：深度消歧' : phase === 'scenario' ? '阶段三：情景决断' : '阶段四：动机补足'}</h3>
+              <h3 className="text-xs font-bold mb-3 glass-light">{phase === 'fixed' ? '阶段一：基础画像' : phase === 'dynamic' ? '阶段二：深度消歧' : phase === 'scenario' ? '阶段三：情景决断' : '阶段四：动机补足'}</h3>
               <div className="h-1.5 bg-white/10 rounded-full mb-3"><div className="h-full bg-indigo-500 rounded-full" style={{ width: `${totalQ ? Math.round(curQ / totalQ * 100) : 0}%` }} /></div>
               <div className="text-xs text-white/30">{curQ}/{totalQ} 题</div>
             </div>
           </div>
           <div className="center-col">
-            <div className="lg:hidden p-3 rounded-xl border text-xs text-white/40 bg-white/5 border-white/10 flex items-center justify-between">
+            <div className="lg:hidden p-3 rounded-xl border glass text-xs text-white/40 bg-white/5 border-white/10 flex items-center justify-between">
               <span>{phase === 'fixed' ? '基础画像' : phase === 'dynamic' ? '深度消歧' : phase === 'scenario' ? '情景决断' : '动机补足'} {curQ + 1}/{totalQ}</span>
               {curQ > 0 && <button onClick={handleGoBack} className="text-indigo-400 hover:text-indigo-300 text-xs"><i className="fas fa-arrow-left mr-1"/>上一题</button>}
             </div>
@@ -531,8 +537,8 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}><h3 className="text-sm font-bold mb-3"><i className="fas fa-chart-bar text-indigo-400 mr-2" />能力画像</h3><ProfileBars p={profile} /></div>
-              <div className={`p-4 rounded-xl border overflow-y-auto max-h-96 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}>
+              <div className={`p-4 rounded-xl border glass ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}><h3 className="text-sm font-bold mb-3"><i className="fas fa-chart-bar text-indigo-400 mr-2" />能力画像</h3><ProfileBars p={profile} /></div>
+              <div className={`p-4 rounded-xl border glass overflow-y-auto max-h-96 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}>
                 <h3 className="text-sm font-bold mb-3"><i className="fas fa-trophy text-amber-400 mr-2" />Top 5 推荐专业</h3>
                 <div className="space-y-3">{store.recommendation!.top_majors.map((m, i) => <div key={m.major.id} onClick={() => setSelectedMajor(m.major)} className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedMajor?.id === m.major.id ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-white/10 hover:border-white/30'}`}><div className="flex justify-between items-center"><span className="text-white font-semibold text-sm">{i + 1}. {m.major.name}</span><span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">{m.final_score}分</span></div><div className="h-1 bg-white/10 rounded-full mt-2"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${m.final_score}%` }} /></div><div className="mt-2 text-xs text-white/40">{m.major.tags.join(' · ')}</div>{store.recommendation!.future_paths?.[m.major.name] && <div className="mt-2 p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 leading-relaxed"><i className="fas fa-route mr-1 text-indigo-400" /> {store.recommendation!.future_paths[m.major.name]}</div>}</div>)}</div>
               </div>
@@ -575,6 +581,7 @@ const App: React.FC = () => {
       )}
 
       <Particles />
+      <ThemePanel show={showThemePanel} onClose={() => setShowThemePanel(false)} blur={themeBlur} opacity={themeOpacity} onBlurChange={setThemeBlur} onOpacityChange={setThemeOpacity} isDark={isDark} />
     </div>
     </>
   );
