@@ -14,7 +14,7 @@ export interface GaokaoInfo {
   composite_score: number;
   elective_subjects: { name: string; score: number }[];
   target_provinces: string[];
-  career_intention: '求职' | '升学' | '考公' | '灵活就业';
+  career_intention: '求职' | '升学' | '考公' | '灵活就业' | '不清楚';
 }
 
 /* ── Profile V3: 18 dimensions in 3 layers ── */
@@ -169,7 +169,7 @@ export const NEW_GAOKAO_SUBJECTS = ['物理','化学','生物','历史','政治'
 export const DEFAULT_GAOKAO: GaokaoInfo = {
   year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',
   chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],
-  career_intention:'求职',
+  career_intention:'不清楚',
 };
 
 export const PHASE_TOTAL: Record<Phase, number> = {

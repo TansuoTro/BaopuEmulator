@@ -25,7 +25,7 @@ async function ds(apiKey: string, prompt: string): Promise<unknown> {
 
 /* ── Extracted GaokaoForm component (no hooks-in-conditionals) ── */
 const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onSubmit }) => {
-  const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'求职' });
+  const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'不清楚' });
   const u = (k: string, v: unknown) => setG(p => ({ ...p, [k]: v }));
   const can = g.province && g.total_score > 0 && g.chinese > 0 && g.math > 0 && g.english > 0;
   return (
@@ -53,6 +53,7 @@ const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onS
             <option value="升学">升学 — 考研/保研/出国深造</option>
             <option value="考公">考公 — 考公务员/事业编</option>
             <option value="灵活就业">灵活就业 — 自己单干/创业/自由职业</option>
+            <option value="不清楚">还不清楚 — 让系统根据测评结果帮我分析</option>
           </select>
         </div>
         <button onClick={() => onSubmit(g)} disabled={!can} className="w-full py-3.5 rounded-lg font-bold bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-30 transition-all">开始测评</button>
