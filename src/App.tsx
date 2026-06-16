@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAssessmentStore } from './store/useAssessmentStore';
 import { FIXED_QUESTIONS, OPEN_QUESTIONS } from './data/questions';
 import { buildDynamicPrompt, buildScorePrompt, buildScenarioPrompt, buildScenarioScorePrompt, buildOpenTagsPrompt, buildRecommendPrompt, SYSTEM_PROMPT } from './llm/prompts';
@@ -68,7 +68,13 @@ const Bar: React.FC<{ label: string; val: number; icon: string }> = ({ label, va
 };
 const ProfileBars: React.FC<{ p: UserProfile }> = ({ p }) => {
   const pf = p as unknown as Record<string, number>;
-  const dims = [{ k: 'math', l: '数学', i: 'fa-calculator' }, { k: 'spatial', l: '空间', i: 'fa-cube' }, { k: 'language', l: '语言', i: 'fa-pen' }, { k: 'logic', l: '逻辑', i: 'fa-brain' }, { k: 'programming', l: '编程', i: 'fa-code' }, { k: 'practice', l: '动手', i: 'fa-wrench' }, { k: 'social', l: '社交', i: 'fa-users' }, { k: 'emotion_stability', l: '情绪', i: 'fa-heart' }, { k: 'pressure_tolerance', l: '抗压', i: 'fa-shield' }, { k: 'long_term_persistence', l: '坚持', i: 'fa-hourglass' }];
+  const dims = [
+    { k:'math',l:'数学',i:'fa-calculator' },{ k:'spatial',l:'空间',i:'fa-cube' },{ k:'language',l:'语言',i:'fa-pen' },{ k:'logic',l:'逻辑',i:'fa-brain' },
+    { k:'programming',l:'编程',i:'fa-code' },{ k:'practice',l:'动手',i:'fa-wrench' },{ k:'social',l:'社交',i:'fa-users' },{ k:'teamwork',l:'协作',i:'fa-people-group' },
+    { k:'emotion_stability',l:'情绪',i:'fa-heart' },{ k:'decision_confidence',l:'果断',i:'fa-bolt' },{ k:'pressure_tolerance',l:'抗压',i:'fa-shield' },{ k:'long_term_persistence',l:'坚持',i:'fa-hourglass' },
+    { k:'critical_thinking',l:'批判',i:'fa-scale-balanced' },{ k:'creativity',l:'创造',i:'fa-lightbulb' },{ k:'rule_compliance',l:'规则',i:'fa-gavel' },
+    { k:'complexity_interest',l:'复杂',i:'fa-circle-nodes' },{ k:'theory_vs_practice',l:'理论',i:'fa-book' },{ k:'independent_vs_team',l:'独立',i:'fa-person' },
+  ];
   return <div className="space-y-1.5">{dims.map(b => <Bar key={b.k} label={b.l} val={pf[b.k] ?? 50} icon={b.i} />)}</div>;
 };
 
@@ -89,81 +95,83 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedMajor, setSelectedMajor] = useState<MajorNode | null>(null);
   const loadingRef = useRef(false);
+  const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
   const isDark = theme === 'dark';
 
-  const handleGaokaoSubmit = useCallback((info: GaokaoInfo) => { store.setGaokaoInfo(info); }, [store]);
-  const handleFixedAnswer = useCallback((a: string) => { store.answerFixed(a); }, [store]);
+  const handleGaokaoSubmit = (info: GaokaoInfo) => { store.setGaokaoInfo(info); };
+  const handleFixedAnswer = (a: string) => { store.answerFixed(a); };
 
   /* Dynamic phase */
   useEffect(() => {
     if (phase !== 'dynamic' || store.dynamicQuestions.length > 0 || loadingRef.current) return;
     loadingRef.current = true; setLoading(true);
     const hist = FIXED_QUESTIONS.map(q => q.primary_dim);
-    ds(store.apiKey, buildDynamicPrompt(profile, detectConflicts(profile), hist as unknown as string[]))
+    const fallback = FIXED_QUESTIONS.slice(0, 5).map((f, i) => ({ id:`D${i+1}`,question_type:'choice' as const,target_discrimination:[f.primary_dim],stem:`再确认：${f.stem}`,options:f.options.map(o=>({key:o.key,text:o.text})),input_hint:'',expected_signal:`确认${f.primary_dim}` }));
+    ds(store.apiKey, buildDynamicPrompt(profile, detectConflicts(profile), hist as string[]))
       .then(raw => {
         const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
         if (d.questions && Array.isArray(d.questions)) qs = (d.questions as Record<string, unknown>[]).filter(x => x && 'stem' in x) as unknown as DynamicQuestion[];
         else if (Array.isArray(d)) qs = (d as unknown[]).filter(x => x && typeof x === 'object' && 'stem' in x) as unknown as DynamicQuestion[];
-        if (qs.length === 0) qs = FIXED_QUESTIONS.slice(0, 5).map((f, i) => ({ id: `D${i + 1}`, question_type: 'choice' as const, target_discrimination: [f.primary_dim], stem: `再确认：${f.stem}`, options: f.options.map(o => ({ key: o.key, text: o.text })), input_hint: '', expected_signal: `确认${f.primary_dim}` }));
-        store.setDynamicQuestions(qs.slice(0, 5));
-      }).catch(e => { console.warn('Dynamic failed:', e); store.setDynamicQuestions(FIXED_QUESTIONS.slice(0, 5).map((f, i) => ({ id: `D${i + 1}`, question_type: 'choice' as const, target_discrimination: [f.primary_dim], stem: `再确认：${f.stem}`, options: f.options.map(o => ({ key: o.key, text: o.text })), input_hint: '', expected_signal: `确认${f.primary_dim}` }))); })
+        store.setDynamicQuestions(qs.length ? qs.slice(0, 5) : fallback);
+      }).catch(e => { console.warn('Dynamic failed:', e); store.setDynamicQuestions(fallback); })
       .finally(() => { setLoading(false); loadingRef.current = false; });
-  }, [phase, store.dynamicQuestions.length, store.apiKey, profile, store]);
+  }, [phase, store.dynamicQuestions.length, store.apiKey, profile]);
 
-  const handleDynamicAnswer = useCallback(async (a: string) => {
+  const handleDynamicAnswer = async (a: string) => {
     const q = store.dynamicQuestions[store.dynamicIndex]; if (!q) return; setLoading(true);
     try {
       const r = await ds(store.apiKey, buildScorePrompt(profile, q.stem, a, q.target_discrimination));
       const d = r as { updated_profile?: Record<string, number> };
-      if (d.updated_profile) { const p = { ...profile }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
+      const fresh = useAssessmentStore.getState().profile;
+      if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       else { const delta = a === q.options[q.options.length - 1]?.key ? 8 : -4; store.updateProfileDynamic(q.target_discrimination[0] as keyof UserProfile, delta); }
       store.answerDynamic(a);
-    } catch (e) { store.addError((e as Error).message); } finally { setLoading(false); }
-  }, [store, profile, store.apiKey]);
+    } catch (e) { store.addError((e as Error).message); store.answerDynamic(a); } finally { setLoading(false); }
+  };
 
-  const handleOpenAnswer = useCallback(async (a: string) => {
+  const handleOpenAnswer = async (a: string) => {
     const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return; setLoading(true);
     try { const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a)); store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a); }
     catch { store.answerOpen(a); } finally { setLoading(false); }
-  }, [store, store.apiKey]);
+  };
 
   /* Scenario phase: fetch 4 scenario questions */
   useEffect(() => {
     if (phase !== 'scenario' || store.scenarioQuestions.length > 0 || loadingRef.current) return;
     loadingRef.current = true; setLoading(true);
-    const hist = FIXED_QUESTIONS.map(q => q.primary_dim);
-    ds(store.apiKey, buildScenarioPrompt(profile, hist as unknown as string[]))
+    ds(store.apiKey, buildScenarioPrompt(profile, FIXED_QUESTIONS.map(q => q.primary_dim) as string[]))
       .then(raw => {
         const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
         if (d.questions && Array.isArray(d.questions)) qs = (d.questions as Record<string, unknown>[]).filter(x => x && 'stem' in x) as unknown as DynamicQuestion[];
         else if (Array.isArray(d)) qs = (d as unknown[]).filter(x => x && typeof x === 'object' && 'stem' in x) as unknown as DynamicQuestion[];
-        if (qs.length === 0) qs = defaultScenarios();
-        store.setScenarioQuestions(qs.slice(0, 4));
+        store.setScenarioQuestions(qs.length ? qs.slice(0, 4) : defaultScenarios());
       }).catch(e => { console.warn('Scenario fetch failed:', e); store.setScenarioQuestions(defaultScenarios()); })
       .finally(() => { setLoading(false); loadingRef.current = false; });
-  }, [phase, store.scenarioQuestions.length, store.apiKey, profile, store]);
+  }, [phase, store.scenarioQuestions.length, store.apiKey, profile]);
 
-  const handleScenarioAnswer = useCallback(async (a: string) => {
+  const handleScenarioAnswer = async (a: string) => {
     const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return; setLoading(true);
     try {
       const r = await ds(store.apiKey, buildScenarioScorePrompt(profile, q.stem, a));
       const d = r as { updated_profile?: Record<string, number> };
-      if (d.updated_profile) { const p = { ...profile }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
+      const fresh = useAssessmentStore.getState().profile;
+      if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
-    } catch (e) { store.addError((e as Error).message); } finally { setLoading(false); }
-  }, [store, profile, store.apiKey]);
+    } catch (e) { store.answerScenario(a); } finally { setLoading(false); }
+  };
 
   /* Recommend phase */
   useEffect(() => {
     if (phase !== 'recommend' || store.recommendation || loadingRef.current) return;
     loadingRef.current = true; setLoading(true);
-    const matched = matchMajors(profile);
-    const confl = detectConflicts(profile);
-    const conf = computeConfidence(store.fixedIndex, store.dynamicIndex, profile, confl, null);
-    const prompt = buildRecommendPrompt(profile, matched.slice(0, 10).map(m => ({ name: m.major.name, code: m.major.code, category: m.major.category, cosine_score: m.cosine_score, tags: m.major.tags })), confl, conf, store.openAnswers, store.scenarioAnswers, store.gaokaoInfo);
-    ds(store.apiKey, prompt).then(raw => { const d = raw as RR; store.finalizeRecommendation(d); }).catch(e => { console.warn('Recommend failed:', e); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
-  }, [phase, store.recommendation, store.apiKey, profile, store]);
+    const s = useAssessmentStore.getState();
+    const matched = matchMajors(s.profile);
+    const confl = detectConflicts(s.profile);
+    const conf = computeConfidence(s.fixedIndex, s.dynamicIndex, s.profile, confl, s.openTags || null);
+    const prompt = buildRecommendPrompt(s.profile, matched.slice(0, 10).map(m => ({ name: m.major.name, code: m.major.code, category: m.major.category, cosine_score: m.cosine_score, tags: m.major.tags })), confl, conf, s.openAnswers, s.scenarioAnswers, s.gaokaoInfo);
+    ds(s.apiKey, prompt).then(raw => { const d = raw as RR; store.finalizeRecommendation(d); }).catch(e => { console.warn('Recommend failed:', e); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
+  }, [phase, store.recommendation, store.apiKey, store.fixedIndex, store.dynamicIndex, store.gaokaoInfo, store.openAnswers, store.scenarioAnswers]);
 
   const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); store.startAssessment(); };
   const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; };
@@ -240,8 +248,8 @@ const App: React.FC = () => {
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-emerald-500/20' : 'bg-white border-emerald-200 shadow-sm'}`}>
                   <div className="text-xs text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/3</div>
                   <p className="text-white/90">{OPEN_QUESTIONS[store.openIndex].stem}</p>
-                  <textarea id="open-input" rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
-                  <button onClick={() => { const el = document.getElementById('open-input') as HTMLTextAreaElement; if (el?.value.trim()) handleOpenAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交</button>
+                  <textarea ref={openRef} rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
+                  <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleOpenAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交</button>
                 </div>
               )}
             </div>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   Phase, Theme, UserProfile, GaokaoInfo, MajorNode, DynamicQuestion,
-  RecommendationResult, ScoreLog, DEFAULT_PROFILE, DEFAULT_GAOKAO,
+  RecommendationResult, ScoreLog, OpenTagResult, DEFAULT_PROFILE, DEFAULT_GAOKAO,
 } from '../types';
 import { FIXED_QUESTIONS, OPEN_QUESTIONS } from '../data/questions';
 import {
@@ -17,7 +17,7 @@ interface AssessmentStore {
   fixedAnswers: Record<string,string>; fixedIndex: number;
   dynamicQuestions: DynamicQuestion[]; dynamicIndex: number; dynamicAnswers: Record<string,string>;
   scenarioQuestions: DynamicQuestion[]; scenarioIndex: number; scenarioAnswers: Record<string,string>;
-  openIndex: number; openAnswers: Record<string,string>;
+  openIndex: number; openAnswers: Record<string,string>; openTags: OpenTagResult | null;
   matchedMajors: { major: MajorNode; cosine_score: number }[];
   recommendation: RecommendationResult | null;
   errors: string[];
@@ -44,7 +44,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
     fixedAnswers:{},fixedIndex:0,
     dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
     scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
-    openIndex:0,openAnswers:{},
+    openIndex:0,openAnswers:{},openTags:null,
     matchedMajors:[],recommendation:null,errors:[],
 
     setApiKey:k=>set({apiKey:k}),
@@ -88,8 +88,8 @@ export const useAssessmentStore = create<AssessmentStore>()(
     setScenarioQuestions:qs=>set({scenarioQuestions:qs}),
     updateProfileDynamic:(dim,delta)=>set(s=>({profile:applyDynamicScore(s.profile,dim,delta)})),
     applyOpenResult:rawTags=>set(s=>{
-      const result=openTagsToDimensions(rawTags);
-      return {profile:applyOpenDimensions(s.profile,result)};
+      const result = openTagsToDimensions(rawTags);
+      return { profile: applyOpenDimensions(s.profile, result), openTags: result };
     }),
     finalizeRecommendation:llmData=>{
       const s=get();
@@ -119,19 +119,19 @@ export const useAssessmentStore = create<AssessmentStore>()(
     addError:m=>set(s=>({errors:[...s.errors,m],phase:'error'})),
     clearErrors:()=>set({errors:[]}),
     reset:()=>set({
-      phase:'idle',theme:'dark',apiKey:'',sessionId:'',
+      phase:'idle',apiKey:'',sessionId:'',
       gaokaoInfo:{...DEFAULT_GAOKAO},profile:{...DEFAULT_PROFILE},scoreLogs:[],
       fixedAnswers:{},fixedIndex:0,
       dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
       scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
-      openIndex:0,openAnswers:{},matchedMajors:[],recommendation:null,errors:[],
+      openIndex:0,openAnswers:{},openTags:null,matchedMajors:[],recommendation:null,errors:[],
     }),
   }),{name:'baopu-session',partialize:s=>({
-    phase:s.phase,sessionId:s.sessionId,gaokaoInfo:s.gaokaoInfo,profile:s.profile,
+    phase:s.phase,theme:s.theme,sessionId:s.sessionId,gaokaoInfo:s.gaokaoInfo,profile:s.profile,
     scoreLogs:s.scoreLogs,fixedAnswers:s.fixedAnswers,fixedIndex:s.fixedIndex,
     dynamicQuestions:s.dynamicQuestions,dynamicIndex:s.dynamicIndex,dynamicAnswers:s.dynamicAnswers,
     scenarioQuestions:s.scenarioQuestions,scenarioIndex:s.scenarioIndex,scenarioAnswers:s.scenarioAnswers,
-    openIndex:s.openIndex,openAnswers:s.openAnswers,recommendation:s.recommendation,
+    openIndex:s.openIndex,openAnswers:s.openAnswers,openTags:s.openTags,recommendation:s.recommendation,
     apiKey:s.apiKey,
   })})
 );
