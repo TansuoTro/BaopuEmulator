@@ -1,4 +1,4 @@
-import React, { useRef, Suspense, useMemo } from 'react';
+import { useRef, Suspense, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,27 +9,65 @@ interface Props {
   onMajorClick?: (m: MajorNode) => void;
 }
 
+function fibonacciSphere(n: number, radius: number): [number, number, number][] {
+  const pts: [number, number, number][] = [];
+  const phi = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1 || 1)) * 2;
+    const rAtY = Math.sqrt(1 - y * y);
+    const theta = phi * i;
+    pts.push([Math.cos(theta) * rAtY * radius, y * radius, Math.sin(theta) * rAtY * radius]);
+  }
+  return pts;
+}
+
 function MajorCloud({ majors, onMajorClick }: { majors: { major: MajorNode; cosine_score: number }[]; onMajorClick?: (m: MajorNode) => void }) {
   const groupRef = useRef<THREE.Group>(null);
   useFrame(() => { if (groupRef.current) groupRef.current.rotation.y += 0.0004; });
 
   const sorted = useMemo(() => [...majors].sort((a,b)=>b.cosine_score-a.cosine_score).slice(0,25), [majors]);
 
+  /* 3 concentric shells: inner(≥75, r≈1.8), mid(55-74, r≈3.2), outer(<55, r≈5.0) */
+  const { inner, mid, outer } = useMemo(() => {
+    const i: typeof sorted = [], m: typeof sorted = [], o: typeof sorted = [];
+    for (const x of sorted) {
+      if (x.cosine_score >= 75) i.push(x);
+      else if (x.cosine_score >= 55) m.push(x);
+      else o.push(x);
+    }
+    return { inner: i, mid: m, outer: o };
+  }, [sorted]);
+
+  const innerPts = useMemo(() => fibonacciSphere(Math.max(inner.length, 1), 1.8), [inner.length]);
+  const midPts = useMemo(() => fibonacciSphere(Math.max(mid.length, 1), 3.2), [mid.length]);
+  const outerPts = useMemo(() => fibonacciSphere(Math.max(outer.length, 1), 5.0), [outer.length]);
+
+  const items = useMemo(() => {
+    const all: { pos: [number,number,number]; m: typeof sorted[0] }[] = [];
+    inner.forEach((m, i) => all.push({ pos: innerPts[i % innerPts.length], m }));
+    mid.forEach((m, i) => all.push({ pos: midPts[i % midPts.length], m }));
+    outer.forEach((m, i) => all.push({ pos: outerPts[i % outerPts.length], m }));
+    return all;
+  }, [inner, mid, outer, innerPts, midPts, outerPts]);
+
   return (
     <group ref={groupRef}>
-      {sorted.map((m) => {
-        const pos = m.major.pca3d;
-        const scale = 1 + m.cosine_score/200;
-        const r = 0.12 + (m.cosine_score/100)*0.1;
+      {items.map(({ pos, m }) => {
+        const r = 0.1 + (m.cosine_score / 100) * 0.12;
         return (
           <group key={m.major.id}>
-            <mesh position={[pos[0]*scale*4, pos[1]*scale*3, pos[2]*scale*4]}
-              onClick={e=>{e.stopPropagation();onMajorClick?.(m.major);}}>
-              <sphereGeometry args={[r,24,24]} />
-              <meshPhysicalMaterial color={new THREE.Color(m.major.rgb[0]/255,m.major.rgb[1]/255,m.major.rgb[2]/255)} roughness={0.3} metalness={0.05} transparent opacity={0.45+m.cosine_score/200} />
+            <mesh position={pos}
+              onClick={e => { e.stopPropagation(); onMajorClick?.(m.major); }}>
+              <sphereGeometry args={[r, 28, 28]} />
+              <meshPhysicalMaterial
+                color={new THREE.Color(m.major.rgb[0] / 255, m.major.rgb[1] / 255, m.major.rgb[2] / 255)}
+                roughness={0.25} metalness={0.05} transparent
+                opacity={0.35 + m.cosine_score / 200}
+              />
             </mesh>
-            <Text position={[pos[0]*scale*4,pos[1]*scale*3+r+0.25,pos[2]*scale*4]} fontSize={0.08} color="rgba(255,255,255,0.55)" anchorX="center" maxWidth={2}>
-              {m.major.name.length>8?m.major.name.slice(0,8)+'…':m.major.name}
+            <Text position={[pos[0], pos[1] + r + 0.22, pos[2]]} fontSize={0.08}
+              color="rgba(255,255,255,0.5)" anchorX="center" maxWidth={2}>
+              {m.major.name.length > 8 ? m.major.name.slice(0, 8) + '…' : m.major.name}
             </Text>
           </group>
         );
@@ -50,7 +88,7 @@ function UserGlow() {
   );
 }
 
-const UniverseScene: React.FC<Props> = ({ majors, onMajorClick }) => {
+const UniverseScene = ({ majors, onMajorClick }: Props) => {
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-white/10" style={{background:'#080816'}}>
       <Canvas camera={{position:[0,2,7],fov:50}} gl={{antialias:true}}>
