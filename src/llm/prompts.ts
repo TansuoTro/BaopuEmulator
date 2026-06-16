@@ -53,7 +53,7 @@ export function buildScenarioScorePrompt(profile: UserProfile, stem: string, ans
     task: 'score_scenario_answer',
     current_profile: profile, scenario_stem: stem, user_answer: answer,
     instruction: `判断回答质量。太短(<15字)或太笼统("看情况""随便")→needs_followup=true+引导追问(如"能具体说说第一步怎么做吗？")。足够详细→updated_profile(0~100,只改social/emotion_stability/decision_confidence/pressure_tolerance/rule_compliance/critical_thinking/independent_vs_team)+analysis。`,
-    output_format: '不足:{"type":"score","needs_followup":true,"followup_prompt":"追问"} 足够:{"type":"score","needs_followup":false,"updated_profile":{"social":65},"analysis":"分析"}',
+    output_format: '{"type":"score","needs_followup":false,"updated_profile":{"social":65},"analysis":"分析"}. 如果回答不足返回{"type":"score","needs_followup":true,"followup_prompt":"追问"}',
   });
 }
 
@@ -85,7 +85,7 @@ export function buildOpenTagsPrompt(stem: string, answer: string): string {
   return JSON.stringify({
     task: 'extract_tags', question: stem, answer,
     instruction: `判断回答质量。太短(<15字)→needs_followup=true+追问。足够→提取3~5个思维结构标签:multi_factor/conditional_reasoning/tradeoff_analysis/counterexample_awareness/concept_boundary/abstraction_tolerance/problem_decomposition/deductive_preference/inductive_preference/independent_study/project_based/quiet_independent/research_interest。不评价观点。`,
-    output_format: '不足:{"type":"extract_tags","needs_followup":true,"followup_prompt":"追问"} 足够:{"type":"extract_tags","needs_followup":false,"tags":["multi_factor"]}',
+    output_format: '{"type":"extract_tags","needs_followup":false,"tags":["multi_factor"]}. 如果不足返回{"type":"extract_tags","needs_followup":true,"followup_prompt":"追问"}',
   });
 }
 

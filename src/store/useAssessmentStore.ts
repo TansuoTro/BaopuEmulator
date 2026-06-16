@@ -147,6 +147,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
       }
     },
     addError:m=>set(s=>({errors:[...s.errors,m]})),
+    // No longer sets phase:'error' — errors shown as toast alongside any phase
     clearErrors:()=>set({errors:[]}),
     reset:()=>set({
       phase:'idle',apiKey:'',sessionId:'',

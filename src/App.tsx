@@ -177,6 +177,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedMajor, setSelectedMajor] = useState<MajorNode | null>(null);
   const [followupHint, setFollowupHint] = useState('');
+  const [tookGaokao, setTookGaokao] = useState<boolean | null>(null);
   const loadingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
@@ -336,7 +337,8 @@ const App: React.FC = () => {
       link.click();
     } catch (e) { console.error('Export failed:', e); } finally { setLoading(false); }
   };
-  const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; };
+  const handleGoBack = () => { setFollowupHint(''); store.goBack(); };
+  const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; setFollowupHint(''); };
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
   const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;
   const inAssess = phase === 'fixed' || phase === 'dynamic' || phase === 'scenario' || phase === 'open';
@@ -354,8 +356,36 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {/* Gaokao Gate — first screen */}
+      {tookGaokao === null && (
+        <div className="max-w-md mx-auto px-4 pt-24 sm:pt-32 pb-10 text-center">
+          <div className="text-6xl mb-6">🎓</div>
+          <h1 className="text-2xl font-extrabold tracking-widest mb-8">你有没有参加过高考？</h1>
+          <div className="flex gap-4 justify-center">
+            <button onClick={() => setTookGaokao(true)} className="px-10 py-4 rounded-xl font-bold text-lg bg-indigo-500 hover:bg-indigo-600 text-white transition-all">
+              参加过 <i className="fas fa-check ml-2"/>
+            </button>
+            <button onClick={() => setTookGaokao(false)} className="px-10 py-4 rounded-xl font-bold text-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-300 transition-all">
+              没参加过 <i className="fas fa-xmark ml-2"/>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TookGaokao=false: reject screen */}
+      {tookGaokao === false && (
+        <div className="max-w-md mx-auto px-4 pt-24 pb-10 text-center">
+          <div className="text-8xl mb-6">🔨</div>
+          <h1 className="text-3xl font-extrabold tracking-widest mb-4">你没参加高考你玩个锤子</h1>
+          <p className="text-white/40 text-sm mb-8">这个系统是给高考生匹配本科专业用的<br/>没参加过高考的话...要不再想想？</p>
+          <button onClick={() => setTookGaokao(null)} className="px-8 py-3 rounded-lg border border-white/20 text-white/50 hover:text-white/70 hover:border-white/40 transition-all text-sm">
+            <i className="fas fa-arrow-left mr-2"/>重新选择
+          </button>
+        </div>
+      )}
+
       {/* Idle */}
-      {phase === 'idle' && (
+      {tookGaokao === true && phase === 'idle' && (
         <div className="max-w-md mx-auto px-4 pt-16 sm:pt-20 pb-10 text-center">
           <div className="text-5xl mb-4">🌌</div><h1 className="text-3xl font-extrabold tracking-widest">抱朴V3</h1>
           <p className="text-white/40 mt-2">AI本科专业宇宙</p>
@@ -369,10 +399,10 @@ const App: React.FC = () => {
       )}
 
       {/* Gaokao */}
-      {phase === 'gaokao' && <div className="phase-enter"><GaokaoSection onSubmit={handleGaokaoSubmit} /></div>}
+      {tookGaokao === true && phase === 'gaokao' && <GaokaoSection onSubmit={handleGaokaoSubmit} />}
 
       {/* Assessment */}
-      {inAssess && (
+      {tookGaokao === true && inAssess && (
         <div className={`assessment-shell ${isDark ? '' : 'assessment-shell-light'}`}>
           <div className="hidden lg:block left-col">
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100/80 border-zinc-200'}`}>
@@ -384,20 +414,20 @@ const App: React.FC = () => {
           <div className="center-col">
             <div className="lg:hidden p-3 rounded-xl border text-xs text-white/40 bg-white/5 border-white/10 flex items-center justify-between">
               <span>{phase === 'fixed' ? '基础画像' : phase === 'dynamic' ? '深度消歧' : phase === 'scenario' ? '情景决断' : '动机补足'} {curQ + 1}/{totalQ}</span>
-              {curQ > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300 text-xs"><i className="fas fa-arrow-left mr-1"/>上一题</button>}
+              {curQ > 0 && <button onClick={handleGoBack} className="text-indigo-400 hover:text-indigo-300 text-xs"><i className="fas fa-arrow-left mr-1"/>上一题</button>}
             </div>
             <div className="scene-box"><UniverseScene majors={store.matchedMajors} onMajorClick={setSelectedMajor} /></div>
             <div className="question-area">
               {phase === 'fixed' && FIXED_QUESTIONS[store.fixedIndex] && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200 shadow-sm'}`}>
-                  <div className="text-xs text-white/40 flex items-center justify-between">{store.fixedIndex + 1}/{FIXED_QUESTIONS.length}{store.fixedIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回上题</button>}</div>
+                  <div className="text-xs text-white/40 flex items-center justify-between">{store.fixedIndex + 1}/{FIXED_QUESTIONS.length}{store.fixedIndex > 0 && <button onClick={handleGoBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回上题</button>}</div>
                   <p className="text-white/90">{FIXED_QUESTIONS[store.fixedIndex].stem}</p>
                   <div className="space-y-2">{FIXED_QUESTIONS[store.fixedIndex].options.map(o => <button key={o.key} onClick={() => handleFixedAnswer(o.key)} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-indigo-400 hover:bg-indigo-500/10 text-white/70 text-sm transition-all"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div>
                 </div>
               )}
               {phase === 'dynamic' && curDynamic && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-purple-500/20' : 'bg-white border-purple-200 shadow-sm'}`}>
-                  <div className="flex items-center justify-between text-xs"><span className="text-purple-400">消歧 {store.dynamicIndex + 1}/{store.dynamicQuestions.length}</span>{store.dynamicIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-purple-400">消歧 {store.dynamicIndex + 1}/{store.dynamicQuestions.length}</span>{store.dynamicIndex > 0 && <button onClick={handleGoBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90">{curDynamic.stem}</p>
                   {curDynamic.question_type === 'choice' ? <div className="space-y-2">{curDynamic.options.map(o => <button key={o.key} onClick={() => handleDynamicAnswer(o.key)} disabled={loading} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-purple-400 hover:bg-purple-500/10 text-white/70 text-sm transition-all disabled:opacity-50"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div> : <div><input type="text" onKeyDown={e => { if (e.key === 'Enter') handleDynamicAnswer((e.target as HTMLInputElement).value); }} placeholder={curDynamic.input_hint || '输入回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm" /></div>}
                 </div>
@@ -433,7 +463,7 @@ const App: React.FC = () => {
       )}
 
       {/* Recommend */}
-      {phase === 'recommend' && store.recommendation && (
+      {tookGaokao === true && phase === 'recommend' && store.recommendation && (
         <div id="recommend-root" className="overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
           <div className="max-w-5xl mx-auto p-3 sm:p-4 pb-20 space-y-4">
             <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-indigo-600/20 rounded-xl p-5 text-center"><h2 className="text-xl font-bold text-white">测评完成</h2><div className="mt-2"><span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${store.recommendation.confidence_breakdown.total >= 70 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>置信度 {store.recommendation.confidence_breakdown.total}%</span></div></div>
@@ -479,8 +509,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Error toast */}
-      {phase === 'error' && store.errors.length > 0 && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border border-red-500/50 rounded-xl p-4 max-w-md">{store.errors.map((e, i) => <p key={i} className="text-red-200 text-sm">{e}</p>)}<button onClick={store.clearErrors} className="mt-2 text-xs text-red-400">关闭</button></div>}
+      {/* Error toast — shows regardless of phase */}
+      {store.errors.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border border-red-500/50 rounded-xl p-4 max-w-md">
+          {store.errors.map((e, i) => <p key={i} className="text-red-200 text-sm">{e}</p>)}
+          <button onClick={store.clearErrors} className="mt-2 text-xs text-red-400 hover:text-red-300">关闭</button>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {loading && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center"><div className="flex items-center gap-3 text-white/70"><i className="fas fa-spinner fa-spin text-2xl text-indigo-400" />AI分析中...</div></div>}
