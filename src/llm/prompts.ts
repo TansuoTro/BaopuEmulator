@@ -122,6 +122,6 @@ export function buildRecommendPrompt(
       target_provinces: gaokaoInfo.target_provinces,
       career_intention: gaokaoInfo.career_intention,
     },
-    instruction: `毕业意向="${gaokaoInfo.career_intention}"。综合所有数据输出：(1)personality_sketch；(2)top_majors—Top5按score降序。每个专业的future_path字段是重点！如果毕业意向是"不清楚"，你必须分析ta的高考分数(总分${gaokaoInfo.total_score}/省排${gaokaoInfo.provincial_rank})、选科组合、画像向量和该专业特征，给出最合理的明确去向建议(考公/升学/求职/灵活就业四选一)，附具体原因和路径。如果毕业意向已明确，则分析该意向下的可行性和替代方案；(3)final_note。output_format:{"type":"recommend","personality_sketch":"...","top_majors":[{"major_name":"...","score":...,"match_reason":[...],"future_path":"...","risk":[...]}],"final_note":"..."}`,
+    instruction: `毕业意向="${gaokaoInfo.career_intention}"。综合所有数据输出：(1)personality_sketch；(2)personality_axes——基于用户的所有回答（特别是情景题和开放题的文本内容），为以下4个对立维度打分(0~100，50=平衡)：接受vs怀疑(0=完全接受他人观点,100=习惯性质疑和批判)、保守vs激进(0=极度保守求稳,100=极度激进冒险)、经验vs知识(0=完全依赖个人经验,100=完全依赖系统知识/理论)、权威vs独立(0=完全听从权威和规则,100=完全独立自主决定)；(3)top_majors—Top5按score降序，每专业给match_reason、future_path(根据毕业意向+每个维度的打分去分析+高考数据)；(4)final_note。output_format:{"type":"recommend","personality_sketch":"...","personality_axes":{"接受vs怀疑":55,"保守vs激进":40,"经验vs知识":70,"权威vs独立":65},"top_majors":[...],"final_note":"..."}`,
   });
 }

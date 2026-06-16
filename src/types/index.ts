@@ -139,6 +139,7 @@ export interface RecommendationResult {
   conflicts: ProfileConflict[];
   keywords: string[];
   personality_sketch: string;
+  personality_axes: { 接受vs怀疑: number; 保守vs激进: number; 经验vs知识: number; 权威vs独立: number };
   future_paths: Record<string, string>;
   final_note: string;
   score_logs: ScoreLog[];

@@ -9,6 +9,7 @@ import { logLLM, logFallback, logPhase, log } from './utils/logger';
 // Startup
 log('info', 'App', 'BaopuEmulator V3.3 启动', { majors: 44, questions: 18, phases: 'idle→gaokao→fixed→dynamic→scenario→open→recommend' });
 import UniverseScene from './components/3d/UniverseScene';
+import PersonalityAxes from './components/results/PersonalityAxes';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const API = 'https://api.deepseek.com/v1/chat/completions';
@@ -129,12 +130,27 @@ const ProfileBars: React.FC<{ p: UserProfile }> = ({ p }) => {
 /* ── App ── */
 /* ── Fallback scenarios ── */
 function defaultScenarios(): DynamicQuestion[] {
-  return [
+  const pool: DynamicQuestion[] = [
     { id:'S01',question_type:'fill',target_discrimination:['pressure_tolerance','decision_confidence'],stem:'你同时接到三个任务：A导师让你明天交一份你完全不会的数据分析报告，B室友让你帮他改简历今晚就要，C你自己下周一有个重要考试还没复习。你会怎么处理这个局面？为什么这样安排？',options:[],input_hint:'请详细描述你的处理方式和理由...',expected_signal:'抗压与决策风格'},
     { id:'S02',question_type:'fill',target_discrimination:['emotion_stability','social'],stem:'你们小组项目拿了奖，但你从别人嘴里听到：组长把你的核心贡献归到了他自己名下，他不在场时跟老师汇报的。大家都在恭喜组长，没人注意到你。你会怎么做？为什么？',options:[],input_hint:'请描述你的做法和内心的想法...',expected_signal:'冲突处理与情绪控制'},
     { id:'S03',question_type:'fill',target_discrimination:['critical_thinking','rule_compliance'],stem:'实习时你发现带你的导师在系统里留了一个后门。他说"以前的人都有，方便调试"，让你别管。他教了你很多东西，你正需要他的推荐信。你怎么处理？说明你的考虑。',options:[],input_hint:'请描述你的处理方式和权衡过程...',expected_signal:'职业道德与规则意识'},
     { id:'S04',question_type:'fill',target_discrimination:['social','independent_vs_team'],stem:'朋友圈里有人转了一篇文章，观点你强烈反对，底下几十条评论全是赞同，没有人提出异议。你和ta有共同好友，关系一般。你会公开表达反对吗？为什么？',options:[],input_hint:'请描述你的选择及背后的考虑...',expected_signal:'社交风格与立场表达'},
+    { id:'S05',question_type:'fill',target_discrimination:['decision_confidence','pressure_tolerance'],stem:'你拿到了两个offer：A是大厂稳定岗位但内容枯燥，B是创业公司有趣但随时可能倒闭。家人强烈建议选A，但你对B更心动。你会怎么选？说明你的决策过程。',options:[],input_hint:'请描述你的考虑和最终选择...',expected_signal:'风险偏好与决策风格'},
+    { id:'S06',question_type:'fill',target_discrimination:['emotion_stability','critical_thinking'],stem:'你在网上发表了一篇技术文章，被人断章取义挂了出来，评论区一片骂声。有朋友私信让你删帖道歉息事宁人，但你觉得原文没问题。你怎么办？',options:[],input_hint:'请描述你的想法和行动...',expected_signal:'舆论压力与立场坚持'},
+    { id:'S07',question_type:'fill',target_discrimination:['rule_compliance','social'],stem:'考试时你旁边的人在偷看你的卷子，老师没发现。这个人平时对你挺好的。你会怎么做？考试结束后你会跟ta说什么吗？',options:[],input_hint:'请描述你的反应和考虑...',expected_signal:'规则意识与人际平衡'},
+    { id:'S08',question_type:'fill',target_discrimination:['long_term_persistence','decision_confidence'],stem:'你坚持了一年的项目最近没有任何进展，身边的人都劝你放弃。你自己也开始怀疑是不是走错了方向。你会继续坚持还是果断放弃？怎么判断？',options:[],input_hint:'请描述你的思考过程...',expected_signal:'长期坚持与理性放弃'},
+    { id:'S09',question_type:'fill',target_discrimination:['creativity','rule_compliance'],stem:'老师布置了一个课程设计，要求严格按模板来。但你有一个更好的创意方案，不过如果用了可能会被扣分。你会按模板走还是冒险用创意方案？',options:[],input_hint:'请描述你的选择和理由...',expected_signal:'创造力与规则服从'},
+    { id:'S10',question_type:'fill',target_discrimination:['independent_vs_team','social'],stem:'你在做一个项目，一个人做效率很高但比较孤独，团队做进度慢但有人讨论。你有一个选择：可以独立完成拿全部credit，也可以拉人合作但得分着。你倾向哪种？',options:[],input_hint:'请描述你的倾向和原因...',expected_signal:'独立vs协作偏好'},
+    { id:'S11',question_type:'fill',target_discrimination:['critical_thinking','emotion_stability'],stem:'你最尊敬的一位老师/前辈在课堂上讲了一个观点你认为是错的。你有证据，但当着全班/全组的面指出可能会让对方难堪。你会怎么做？',options:[],input_hint:'请描述你如何处理这个两难...',expected_signal:'批判表达与尊重权威'},
+    { id:'S12',question_type:'fill',target_discrimination:['pressure_tolerance','long_term_persistence'],stem:'未来一年你将同时面对：考研/求职准备、毕业论文、家庭期望、经济压力。想到这些你觉得最担心的是什么？你打算怎么扛过去？',options:[],input_hint:'请描述你的心态和计划...',expected_signal:'长期压力承受能力'},
+    { id:'S13',question_type:'fill',target_discrimination:['social','independent_vs_team'],stem:'你们班要组队参加比赛，你发现能力强的人都已经组好了队，剩下的人实力较弱。你是主动去找强队哪怕当配角，还是拉剩下的人自己当队长带一个弱队？',options:[],input_hint:'请描述你的选择和考虑...',expected_signal:'领导力与协作策略'},
+    { id:'S14',question_type:'fill',target_discrimination:['rule_compliance','critical_thinking'],stem:'你发现学校的一项规定明显不合理，很多同学都在抱怨但没人反映。你有渠道可以向上反映，但可能会被老师记住。你会站出来吗？',options:[],input_hint:'请描述你的决定和理由...',expected_signal:'规则挑战与风险承担'},
+    { id:'S15',question_type:'fill',target_discrimination:['emotion_stability','decision_confidence'],stem:'你花了很多心血准备的一次演讲/答辩，上台后突然大脑一片空白，下面的观众开始窃窃私语。距离结束还有5分钟。你会怎么应对？',options:[],input_hint:'请描述你临场的反应...',expected_signal:'临场应变与情绪控制'},
+    { id:'S16',question_type:'fill',target_discrimination:['creativity','complexity_interest'],stem:'如果给你三个月完全自由的时间，没有课业压力没有经济负担，但你必须完成一件你自己觉得"值得"的事。你会做什么？为什么选这个？',options:[],input_hint:'请描述你的计划和动机...',expected_signal:'内在动机与兴趣倾向'},
   ];
+  // 随机选择4道不重复的题
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4).map((q,i) => ({...q, id: `S${String(i+1).padStart(2,'0')}`}));
 }
 
 const App: React.FC = () => {
@@ -347,6 +363,16 @@ const App: React.FC = () => {
                 <p className="text-sm leading-relaxed text-white/70">{store.recommendation.personality_sketch}</p>
               </div>
             )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/20' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'} lg:col-span-1`}>
+                <h3 className="text-sm font-bold mb-2 flex items-center gap-2"><i className="fas fa-user-astronaut text-indigo-400" /> 人物侧写</h3>
+                <p className="text-sm leading-relaxed text-white/70">{store.recommendation.personality_sketch}</p>
+              </div>
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'} lg:col-span-2`}>
+                <h3 className="text-sm font-bold mb-3 flex items-center gap-2"><i className="fas fa-arrows-left-right text-purple-400" /> 认知倾向四轴</h3>
+                <PersonalityAxes axes={store.recommendation.personality_axes} />
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}><h3 className="text-sm font-bold mb-3"><i className="fas fa-chart-bar text-indigo-400 mr-2" />能力画像</h3><ProfileBars p={profile} /></div>
               <div className={`p-4 rounded-xl border overflow-y-auto max-h-96 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}>
