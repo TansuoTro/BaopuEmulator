@@ -267,8 +267,9 @@ const App: React.FC = () => {
   };
 
   const handleOpenAnswer = async (a: string) => {
-    const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return;
+    const q = OPEN_QUESTIONS[store.openIndex]; if (!q || submittingRef.current) return;
     let isFollowup = false;
+    submittingRef.current = true;
     try {
       const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a));
       const d = r as { needs_followup?: boolean; followup_prompt?: string; tags?: string[] };
@@ -281,7 +282,7 @@ const App: React.FC = () => {
       setFollowupHint('');
       store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a);
     } catch { const tags = fallbackOpenTags(a); store.applyOpenResult({ tags }); if (!isFollowup) store.answerOpen(a); }
-    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
+    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; submittingRef.current = false; }
   };
 
   /* Scenario phase: fetch 4 scenario questions */
@@ -321,7 +322,7 @@ const App: React.FC = () => {
       if (d.updated_profile) { const fresh = useAssessmentStore.getState().profile; const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
     } catch (e) { fallbackScenarioScore(useAssessmentStore.getState().profile, a); if (!isFollowup) store.answerScenario(a); }
-    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
+    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; submittingRef.current = false; }
   };
 
   /* Recommend phase */
