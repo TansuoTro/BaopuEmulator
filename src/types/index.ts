@@ -45,18 +45,12 @@ export const DEFAULT_PROFILE: UserProfile = {
 
 /* ── Knowledge Graph Major ── */
 export interface MajorNode {
-  id: string;
-  name: string;
-  code: string;
-  category: string;
-  critical_type: '强批判' | '弱批判';
+  id: string; name: string; code: string;
+  category: string; critical_type: '强批判' | '弱批判';
   rgb: [number, number, number];
   requirements: Partial<UserProfile>;
-  courses: string[];
-  career: string[];
-  tags: string[];
-  similar_majors: string[];
-  pca3d: [number, number, number];
+  courses: string[]; career: string[]; tags: string[];
+  similar_majors: string[]; pca3d: [number, number, number];
   difficulty: number;
   employment_direction: string;
   postgraduate_direction: string;
