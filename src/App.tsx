@@ -271,7 +271,7 @@ const App: React.FC = () => {
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
   const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;
   const inAssess = phase === 'fixed' || phase === 'dynamic' || phase === 'scenario' || phase === 'open';
-  const totalQ = phase === 'fixed' ? 18 : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'scenario' ? store.scenarioQuestions.length || 4 : phase === 'open' ? 3 : 0;
+  const totalQ = phase === 'fixed' ? FIXED_QUESTIONS.length : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'scenario' ? store.scenarioQuestions.length || 4 : phase === 'open' ? 3 : 0;
   const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
@@ -323,7 +323,7 @@ const App: React.FC = () => {
             <div className="question-area">
               {phase === 'fixed' && FIXED_QUESTIONS[store.fixedIndex] && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200 shadow-sm'}`}>
-                  <div className="text-xs text-white/40 flex items-center justify-between">{store.fixedIndex + 1}/18{store.fixedIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回上题</button>}</div>
+                  <div className="text-xs text-white/40 flex items-center justify-between">{store.fixedIndex + 1}/{FIXED_QUESTIONS.length}{store.fixedIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回上题</button>}</div>
                   <p className="text-white/90">{FIXED_QUESTIONS[store.fixedIndex].stem}</p>
                   <div className="space-y-2">{FIXED_QUESTIONS[store.fixedIndex].options.map(o => <button key={o.key} onClick={() => handleFixedAnswer(o.key)} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-indigo-400 hover:bg-indigo-500/10 text-white/70 text-sm transition-all"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div>
                 </div>

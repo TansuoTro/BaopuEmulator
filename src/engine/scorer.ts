@@ -87,16 +87,26 @@ export function detectConflicts(profile: UserProfile): ProfileConflict[] {
 }
 
 const tagMap: Record<string, { key: keyof UserProfile; delta: number; confidence: number }[]> = {
-  'independent_study':[{key:'independent_vs_team',delta:-8,confidence:0.7},{key:'social',delta:-3,confidence:0.6},{key:'creativity',delta:3,confidence:0.5}],
-  'project_based':[{key:'practice',delta:6,confidence:0.75},{key:'teamwork',delta:4,confidence:0.65},{key:'decision_confidence',delta:3,confidence:0.55}],
-  'plan_and_execute':[{key:'pressure_tolerance',delta:6,confidence:0.7},{key:'decision_confidence',delta:4,confidence:0.6},{key:'rule_compliance',delta:3,confidence:0.5}],
+  'independent_study':[{key:'independent_vs_team',delta:-8,confidence:0.7},{key:'social',delta:-3,confidence:0.6}],
+  'project_based':[{key:'practice',delta:6,confidence:0.75},{key:'teamwork',delta:4,confidence:0.65}],
+  'plan_and_execute':[{key:'pressure_tolerance',delta:6,confidence:0.7},{key:'decision_confidence',delta:4,confidence:0.6}],
   'seek_help':[{key:'social',delta:5,confidence:0.65},{key:'teamwork',delta:4,confidence:0.6}],
-  'quiet_independent':[{key:'independent_vs_team',delta:-6,confidence:0.7},{key:'social',delta:-3,confidence:0.6},{key:'stable_vs_change',delta:4,confidence:0.5}],
+  'quiet_independent':[{key:'independent_vs_team',delta:-6,confidence:0.7},{key:'social',delta:-3,confidence:0.6}],
   'active_collaborative':[{key:'teamwork',delta:6,confidence:0.7},{key:'social',delta:4,confidence:0.65}],
   'high_intrinsic':[{key:'long_term_persistence',delta:7,confidence:0.8},{key:'complexity_interest',delta:5,confidence:0.7}],
   'research_interest':[{key:'critical_thinking',delta:6,confidence:0.75},{key:'complexity_interest',delta:5,confidence:0.7},{key:'theory_vs_practice',delta:-4,confidence:0.6}],
-  'practical_orientation':[{key:'practice',delta:6,confidence:0.7},{key:'theory_vs_practice',delta:5,confidence:0.65}],
-  'leadership':[{key:'social',delta:5,confidence:0.65},{key:'decision_confidence',delta:4,confidence:0.6},{key:'teamwork',delta:4,confidence:0.55}],
+  /* 思维结构标签 (V4) */
+  'multi_factor':[{key:'critical_thinking',delta:5,confidence:0.8},{key:'complexity_interest',delta:4,confidence:0.7}],
+  'conditional_reasoning':[{key:'logic',delta:5,confidence:0.75},{key:'critical_thinking',delta:3,confidence:0.7}],
+  'tradeoff_analysis':[{key:'critical_thinking',delta:4,confidence:0.7},{key:'decision_confidence',delta:3,confidence:0.65}],
+  'counterexample_awareness':[{key:'critical_thinking',delta:5,confidence:0.75},{key:'logic',delta:3,confidence:0.65}],
+  'concept_boundary':[{key:'critical_thinking',delta:6,confidence:0.8},{key:'logic',delta:4,confidence:0.7}],
+  'abstraction_tolerance':[{key:'complexity_interest',delta:6,confidence:0.8},{key:'critical_thinking',delta:4,confidence:0.7},{key:'theory_vs_practice',delta:-3,confidence:0.6}],
+  'problem_decomposition':[{key:'logic',delta:5,confidence:0.75},{key:'practice',delta:4,confidence:0.7},{key:'programming',delta:3,confidence:0.6}],
+  'deductive_preference':[{key:'theory_vs_practice',delta:-5,confidence:0.7},{key:'logic',delta:3,confidence:0.65}],
+  'inductive_preference':[{key:'theory_vs_practice',delta:5,confidence:0.7},{key:'practice',delta:4,confidence:0.65}],
+  'rule_pragmatic':[{key:'rule_compliance',delta:-4,confidence:0.65},{key:'critical_thinking',delta:3,confidence:0.6}],
+  'rule_principled':[{key:'rule_compliance',delta:4,confidence:0.65}],
 };
 
 export function openTagsToDimensions(rawTags: { tags?: string[] }): OpenTagResult {
