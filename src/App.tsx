@@ -4,6 +4,10 @@ import { FIXED_QUESTIONS, OPEN_QUESTIONS } from './data/questions';
 import { buildDynamicPrompt, buildScorePrompt, buildScenarioPrompt, buildScenarioScorePrompt, buildOpenTagsPrompt, buildRecommendPrompt, SYSTEM_PROMPT } from './llm/prompts';
 import { matchMajors, computeConfidence, detectConflicts } from './engine/scorer';
 import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, PROVINCE_MAX_SCORE, GAOKAO_YEARS } from './types';
+import { logLLM, logFallback, logPhase, log } from './utils/logger';
+
+// Startup
+log('info', 'App', 'BaopuEmulator V3.3 启动', { majors: 44, questions: 18, phases: 'idle→gaokao→fixed→dynamic→scenario→open→recommend' });
 import UniverseScene from './components/3d/UniverseScene';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -152,13 +156,16 @@ const App: React.FC = () => {
     loadingRef.current = true; setLoading(true);
     const hist = FIXED_QUESTIONS.map(q => q.primary_dim);
     const fallback = FIXED_QUESTIONS.slice(0, 5).map((f, i) => ({ id:`D${i+1}`,question_type:'choice' as const,target_discrimination:[f.primary_dim],stem:`再确认：${f.stem}`,options:f.options.map(o=>({key:o.key,text:o.text})),input_hint:'',expected_signal:`确认${f.primary_dim}` }));
+    logLLM('dynamic','start');
     ds(store.apiKey, buildDynamicPrompt(profile, detectConflicts(profile), hist as string[]))
       .then(raw => {
+        logLLM('dynamic','ok',`${Array.isArray(raw)?'array':typeof raw}`);
         const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
         if (d.questions && Array.isArray(d.questions)) qs = (d.questions as Record<string, unknown>[]).filter(x => x && 'stem' in x) as unknown as DynamicQuestion[];
         else if (Array.isArray(d)) qs = (d as unknown[]).filter(x => x && typeof x === 'object' && 'stem' in x) as unknown as DynamicQuestion[];
         store.setDynamicQuestions(qs.length ? qs.slice(0, 5) : fallback);
-      }).catch(e => { console.warn('Dynamic failed:', e); store.setDynamicQuestions(fallback); })
+        if(!qs.length) logFallback('dynamic: LLM返回空，使用固定题变体');
+      }).catch(e => { logLLM('dynamic','fail',(e as Error).message); logFallback('dynamic: API调用失败'); store.setDynamicQuestions(fallback); })
       .finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.dynamicQuestions.length, store.apiKey, profile]);
 
@@ -166,12 +173,13 @@ const App: React.FC = () => {
     const q = store.dynamicQuestions[store.dynamicIndex]; if (!q) return; setLoading(true);
     try {
       const r = await ds(store.apiKey, buildScorePrompt(profile, q.stem, a, q.target_discrimination));
+      logLLM('score-dynamic','ok');
       const d = r as { updated_profile?: Record<string, number> };
       const fresh = useAssessmentStore.getState().profile;
       if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       else { const delta = a === q.options[q.options.length - 1]?.key ? 8 : -4; store.updateProfileDynamic(q.target_discrimination[0] as keyof UserProfile, delta); }
       store.answerDynamic(a);
-    } catch (e) { store.addError((e as Error).message); store.answerDynamic(a); } finally { setLoading(false); }
+    } catch (e) { logLLM('score-dynamic','fail',(e as Error).message); store.addError((e as Error).message); store.answerDynamic(a); } finally { setLoading(false); }
   };
 
   const handleOpenAnswer = async (a: string) => {
@@ -184,13 +192,16 @@ const App: React.FC = () => {
   useEffect(() => {
     if (phase !== 'scenario' || store.scenarioQuestions.length > 0 || loadingRef.current) return;
     loadingRef.current = true; setLoading(true);
+    logLLM('scenario','start');
     ds(store.apiKey, buildScenarioPrompt(profile, FIXED_QUESTIONS.map(q => q.primary_dim) as string[]))
       .then(raw => {
+        logLLM('scenario','ok');
         const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
         if (d.questions && Array.isArray(d.questions)) qs = (d.questions as Record<string, unknown>[]).filter(x => x && 'stem' in x) as unknown as DynamicQuestion[];
         else if (Array.isArray(d)) qs = (d as unknown[]).filter(x => x && typeof x === 'object' && 'stem' in x) as unknown as DynamicQuestion[];
         store.setScenarioQuestions(qs.length ? qs.slice(0, 4) : defaultScenarios());
-      }).catch(e => { console.warn('Scenario fetch failed:', e); store.setScenarioQuestions(defaultScenarios()); })
+        if(!qs.length) logFallback('scenario: LLM返回空，使用默认情景题');
+      }).catch(e => { logLLM('scenario','fail',(e as Error).message); logFallback('scenario: API调用失败'); store.setScenarioQuestions(defaultScenarios()); })
       .finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.scenarioQuestions.length, store.apiKey, profile]);
 
@@ -214,10 +225,14 @@ const App: React.FC = () => {
     const confl = detectConflicts(s.profile);
     const conf = computeConfidence(s.fixedIndex, s.dynamicIndex, s.profile, confl, s.openTags || null);
     const prompt = buildRecommendPrompt(s.profile, matched.slice(0, 10).map(m => ({ name: m.major.name, code: m.major.code, category: m.major.category, cosine_score: m.cosine_score, tags: m.major.tags })), confl, conf, s.openAnswers, s.scenarioAnswers, s.gaokaoInfo);
-    ds(s.apiKey, prompt).then(raw => { const d = raw as RR; store.finalizeRecommendation(d); }).catch(e => { console.warn('Recommend failed:', e); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
+    logLLM('recommend','start');
+    ds(s.apiKey, prompt).then(raw => {
+      logLLM('recommend','ok');
+      const d = raw as RR; store.finalizeRecommendation(d);
+    }).catch(e => { logLLM('recommend','fail',(e as Error).message); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.recommendation, store.apiKey, store.fixedIndex, store.dynamicIndex, store.gaokaoInfo, store.openAnswers, store.scenarioAnswers]);
 
-  const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); store.startAssessment(); };
+  const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); logPhase('idle','gaokao'); store.startAssessment(); };
   const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; };
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
   const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;

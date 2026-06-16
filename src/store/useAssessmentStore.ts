@@ -9,6 +9,7 @@ import {
   scoreFixedAnswer, matchMajors, computeConfidence, detectConflicts,
   applyDynamicScore, applyOpenDimensions, openTagsToDimensions,
 } from '../engine/scorer';
+import { logPhase } from '../utils/logger';
 
 interface AssessmentStore {
   phase: Phase; theme: Theme; apiKey: string; sessionId: string;
@@ -49,7 +50,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
 
     setApiKey:k=>set({apiKey:k}),
     toggleTheme:()=>set(s=>({theme:s.theme==='dark'?'light':'dark'})),
-    setGaokaoInfo:info=>set({gaokaoInfo:info,phase:'fixed',sessionId:`s${Date.now()}`}),
+    setGaokaoInfo:info=>{logPhase('idle/gaokao','fixed');set({gaokaoInfo:info,phase:'fixed',sessionId:`s${Date.now()}`});},
     startAssessment:()=>set({
       phase:'gaokao',profile:{...DEFAULT_PROFILE},scoreLogs:[],
       gaokaoInfo:{...DEFAULT_GAOKAO},fixedAnswers:{},fixedIndex:0,
@@ -63,25 +64,25 @@ export const useAssessmentStore = create<AssessmentStore>()(
       const ans={...s.fixedAnswers,[q.id]:a};
       const idx=s.fixedIndex+1;
       const matched=matchMajors(profile);
-      if(idx>=FIXED_QUESTIONS.length) set({profile,fixedAnswers:ans,fixedIndex:idx,scoreLogs:[...s.scoreLogs,log],matchedMajors:matched,phase:'dynamic'});
+      if(idx>=FIXED_QUESTIONS.length) {logPhase('fixed','dynamic');set({profile,fixedAnswers:ans,fixedIndex:idx,scoreLogs:[...s.scoreLogs,log],matchedMajors:matched,phase:'dynamic'});}
       else set({profile,fixedAnswers:ans,fixedIndex:idx,scoreLogs:[...s.scoreLogs,log],matchedMajors:matched});
     },
     answerDynamic:a=>{
       const s=get(); const q=s.dynamicQuestions[s.dynamicIndex]; if(!q)return;
       const ans={...s.dynamicAnswers,[q.id]:a}; const idx=s.dynamicIndex+1;
-      if(idx>=s.dynamicQuestions.length) set({dynamicAnswers:ans,dynamicIndex:idx,phase:'scenario'});
+      if(idx>=s.dynamicQuestions.length) {logPhase('dynamic','scenario');set({dynamicAnswers:ans,dynamicIndex:idx,phase:'scenario'});}
       else set({dynamicAnswers:ans,dynamicIndex:idx});
     },
     answerScenario:a=>{
       const s=get(); const q=s.scenarioQuestions[s.scenarioIndex]; if(!q)return;
       const ans={...s.scenarioAnswers,[q.id]:a}; const idx=s.scenarioIndex+1;
-      if(idx>=s.scenarioQuestions.length) set({scenarioAnswers:ans,scenarioIndex:idx,phase:'open'});
+      if(idx>=s.scenarioQuestions.length) {logPhase('scenario','open');set({scenarioAnswers:ans,scenarioIndex:idx,phase:'open'});}
       else set({scenarioAnswers:ans,scenarioIndex:idx});
     },
     answerOpen:a=>{
       const s=get(); const q=OPEN_QUESTIONS[s.openIndex]; if(!q)return;
       const ans={...s.openAnswers,[q.id]:a}; const idx=s.openIndex+1;
-      if(idx>=OPEN_QUESTIONS.length) set({openAnswers:ans,openIndex:idx,phase:'recommend'});
+      if(idx>=OPEN_QUESTIONS.length) {logPhase('open','recommend');set({openAnswers:ans,openIndex:idx,phase:'recommend'});}
       else set({openAnswers:ans,openIndex:idx});
     },
     setDynamicQuestions:qs=>set({dynamicQuestions:qs}),
