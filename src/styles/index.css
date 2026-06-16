@@ -5,26 +5,80 @@
 *::-webkit-scrollbar-track { background:transparent; }
 *::-webkit-scrollbar-thumb { background:rgba(156,163,175,0.3); border-radius:2px; }
 
-body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; }
+body { margin:0; font-family:'ZCOOL KuaiLe', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 canvas { display:block; }
 
-select, select option {
-  color-scheme: dark;
-  background: #1e1b2e;
-  color: #e2e8f0;
+/* Cute font override for headings */
+h1, h2, h3, .font-bold, .font-extrabold { font-family:'ZCOOL KuaiLe', 'PingFang SC', sans-serif; }
+
+/* ── Select dark mode ── */
+select, select option { color-scheme:dark; background:#1e1b2e; color:#e2e8f0; }
+
+/* ── Click particles ── */
+.click-particle {
+  position:fixed; pointer-events:none; z-index:9999; border-radius:50%;
+  animation: particlePop 0.7s ease-out forwards;
+}
+@keyframes particlePop {
+  0% { transform:scale(1); opacity:1; }
+  100% { transform:scale(0) translateY(-30px); opacity:0; }
 }
 
-@media(min-width:1024px){ body{overflow:hidden;} }
+/* ── Phase transitions ── */
+@keyframes fadeSlideIn {
+  0% { opacity:0; transform:translateY(12px); }
+  100% { opacity:1; transform:translateY(0); }
+}
+.phase-enter {
+  animation: fadeSlideIn 0.35s ease-out;
+}
 
+/* ── Option hover glow ── */
+button.option-btn {
+  transition: all 0.2s ease;
+}
+button.option-btn:hover {
+  transform: translateX(4px);
+  box-shadow: 0 0 20px rgba(99,102,241,0.2);
+}
+
+/* ── Card hover lift ── */
+.card-hover {
+  transition: all 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+/* ── Theme transitions ── */
+.theme-transition {
+  transition: background-color 0.4s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Bar fill pulse ── */
+@keyframes barFill {
+  0% { width:0%; }
+}
+.bar-animate {
+  animation: barFill 0.6s ease-out;
+}
+
+/* ── Glowing keyframe for user sphere ── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow:0 0 20px rgba(79,70,229,0.3); }
+  50% { box-shadow:0 0 40px rgba(79,70,229,0.6); }
+}
+
+/* ── Layout ── */
+@media(min-width:1024px){ body{overflow:hidden;} }
 .assessment-shell { display:flex; flex-direction:column; gap:12px; padding:12px; }
 @media(min-width:1024px){
   .assessment-shell { display:grid; grid-template-columns:160px 1fr 240px; grid-template-rows:calc(100vh - 56px); gap:12px; padding:12px; max-width:1440px; margin:0 auto; height:calc(100vh - 56px); }
 }
-
 .scene-box { width:100%; height:260px; }
 @media(min-width:640px){ .scene-box { height:340px; } }
 @media(min-width:1024px){ .scene-box { height:auto; flex:1; min-height:0; } }
-
 .center-col { display:flex; flex-direction:column; gap:12px; }
 @media(min-width:1024px){ .center-col { min-height:0; overflow:hidden; } }
 .question-area { }
@@ -33,12 +87,7 @@ select, select option {
 
 /* Light mode select overrides */
 .assessment-shell-light select,
-.assessment-shell-light select option {
-  color-scheme: light;
-  background: #f4f4f5;
-  color: #18181b;
-}
-
+.assessment-shell-light select option { color-scheme:light; background:#f4f4f5; color:#18181b; }
 .assessment-shell-light .bg-white\/5 { background:rgba(0,0,0,0.03); }
 .assessment-shell-light .border-white\/10 { border-color:rgba(0,0,0,0.08); }
 .assessment-shell-light .text-white\/90,

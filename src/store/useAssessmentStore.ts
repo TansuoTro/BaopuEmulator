@@ -12,7 +12,7 @@ import {
 import { logPhase } from '../utils/logger';
 
 interface AssessmentStore {
-  phase: Phase; theme: Theme; apiKey: string; sessionId: string;
+  phase: Phase; theme: Theme; apiKey: string; sessionId: string; nickname: string;
   gaokaoInfo: GaokaoInfo;
   profile: UserProfile; scoreLogs: ScoreLog[];
   fixedAnswers: Record<string,string>; fixedIndex: number;
@@ -23,7 +23,7 @@ interface AssessmentStore {
   recommendation: RecommendationResult | null;
   errors: string[];
 
-  setApiKey: (k:string)=>void; toggleTheme: ()=>void;
+  setApiKey: (k:string)=>void; toggleTheme: ()=>void; setNickname: (n:string)=>void;
   setGaokaoInfo: (info:GaokaoInfo)=>void;
   startAssessment: ()=>void;
   answerFixed: (a:string)=>void;
@@ -41,7 +41,7 @@ interface AssessmentStore {
 
 export const useAssessmentStore = create<AssessmentStore>()(
   persist((set,get)=>({
-    phase:'idle',theme:'dark',apiKey:'',sessionId:'',
+    phase:'idle',theme:'dark',apiKey:'',sessionId:'',nickname:'',
     gaokaoInfo:{...DEFAULT_GAOKAO},profile:{...DEFAULT_PROFILE},scoreLogs:[],
     fixedAnswers:{},fixedIndex:0,
     dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
@@ -51,13 +51,14 @@ export const useAssessmentStore = create<AssessmentStore>()(
 
     setApiKey:k=>set({apiKey:k}),
     toggleTheme:()=>set(s=>({theme:s.theme==='dark'?'light':'dark'})),
+    setNickname:n=>set({nickname:n}),
     setGaokaoInfo:info=>{logPhase('idle/gaokao','fixed');set({gaokaoInfo:info,phase:'fixed',sessionId:`s${Date.now()}`});},
     startAssessment:()=>set({
       phase:'gaokao',profile:{...DEFAULT_PROFILE},scoreLogs:[],
       gaokaoInfo:{...DEFAULT_GAOKAO},fixedAnswers:{},fixedIndex:0,
       dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
       scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
-      openIndex:0,openAnswers:{},recommendation:null,matchedMajors:[],errors:[],
+      openIndex:0,openAnswers:{},openTags:null,recommendation:null,matchedMajors:[],errors:[],
     }),
     answerFixed:a=>{
       const s=get(); const q=FIXED_QUESTIONS[s.fixedIndex]; if(!q)return;
@@ -106,6 +107,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
         phase:'recommend',
         recommendation:{
           session_id:s.sessionId,
+          nickname:s.nickname,
           confidence_breakdown:conf,
           profile:s.profile,
           top_majors:top,
@@ -155,7 +157,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
       openIndex:0,openAnswers:{},openTags:null,matchedMajors:[],recommendation:null,errors:[],
     }),
   }),{name:'baopu-session',partialize:s=>({
-    phase:s.phase,theme:s.theme,sessionId:s.sessionId,gaokaoInfo:s.gaokaoInfo,profile:s.profile,
+    phase:s.phase,theme:s.theme,nickname:s.nickname,sessionId:s.sessionId,gaokaoInfo:s.gaokaoInfo,profile:s.profile,
     scoreLogs:s.scoreLogs,fixedAnswers:s.fixedAnswers,fixedIndex:s.fixedIndex,
     dynamicQuestions:s.dynamicQuestions,dynamicIndex:s.dynamicIndex,dynamicAnswers:s.dynamicAnswers,
     scenarioQuestions:s.scenarioQuestions,scenarioIndex:s.scenarioIndex,scenarioAnswers:s.scenarioAnswers,

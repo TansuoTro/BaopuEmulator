@@ -133,6 +133,7 @@ export interface MatchedMajor {
 
 export interface RecommendationResult {
   session_id: string;
+  nickname: string;
   confidence_breakdown: ConfidenceBreakdown;
   profile: UserProfile;
   top_majors: MatchedMajor[];

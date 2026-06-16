@@ -5,11 +5,13 @@ import { buildDynamicPrompt, buildScorePrompt, buildScenarioPrompt, buildScenari
 import { matchMajors, computeConfidence, detectConflicts } from './engine/scorer';
 import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, PROVINCE_MAX_SCORE, GAOKAO_YEARS } from './types';
 import { logLLM, logFallback, logPhase, log } from './utils/logger';
+import { useClickParticles } from './utils/particles';
 
 // Startup
 log('info', 'App', 'BaopuEmulator V3.3 启动', { majors: 44, questions: 18, phases: 'idle→gaokao→fixed→dynamic→scenario→open→recommend' });
 import UniverseScene from './components/3d/UniverseScene';
 import PersonalityAxes from './components/results/PersonalityAxes';
+import html2canvas from 'html2canvas';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const API = 'https://api.deepseek.com/v1/chat/completions';
@@ -162,6 +164,7 @@ const App: React.FC = () => {
   const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
   const isDark = theme === 'dark';
+  const { spawn, Particles } = useClickParticles();
 
   const handleGaokaoSubmit = (info: GaokaoInfo) => { store.setGaokaoInfo(info); };
   const handleFixedAnswer = (a: string) => { store.answerFixed(a); };
@@ -251,6 +254,19 @@ const App: React.FC = () => {
   }, [phase, store.recommendation, store.apiKey, store.fixedIndex, store.dynamicIndex, store.gaokaoInfo, store.openAnswers, store.scenarioAnswers]);
 
   const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); logPhase('idle','gaokao'); store.startAssessment(); };
+
+  const handleExport = async () => {
+    const el = document.getElementById('recommend-root');
+    if (!el) return;
+    setLoading(true);
+    try {
+      const canvas = await html2canvas(el, { backgroundColor: '#080816', scale: 2 });
+      const link = document.createElement('a');
+      link.download = `BaopuEmulator_${store.nickname || 'report'}_${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) { console.error('Export failed:', e); } finally { setLoading(false); }
+  };
   const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; };
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
   const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;
@@ -259,7 +275,7 @@ const App: React.FC = () => {
   const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
         <div className="flex items-center gap-3"><i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator V3</span></div>
@@ -278,13 +294,15 @@ const App: React.FC = () => {
           <div className="mt-8 space-y-4 text-left">
             <label className="block text-sm text-white/60 flex items-center gap-2"><i className="fas fa-key text-indigo-400" /> DeepSeek API Key</label>
             <input type="password" value={apiInput} onChange={e => setApiInput(e.target.value)} placeholder="sk-..." className={`w-full px-4 py-3 rounded-lg font-mono text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-white/20' : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'}`} />
+            <label className="block text-sm text-white/60 flex items-center gap-2"><i className="fas fa-user text-indigo-400" /> 你的昵称（选填）</label>
+            <input type="text" value={store.nickname} onChange={e => store.setNickname(e.target.value)} placeholder="输入昵称，将出现在导出报告上..." className={`w-full px-4 py-3 rounded-lg text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-white/20' : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'}`} />
             <button onClick={handleStart} disabled={!apiInput.trim()} className="w-full py-3.5 rounded-lg font-bold bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-30 transition-all">🌌 进入专业宇宙</button>
           </div>
         </div>
       )}
 
       {/* Gaokao */}
-      {phase === 'gaokao' && <GaokaoSection onSubmit={handleGaokaoSubmit} />}
+      {phase === 'gaokao' && <div className="phase-enter"><GaokaoSection onSubmit={handleGaokaoSubmit} /></div>}
 
       {/* Assessment */}
       {inAssess && (
@@ -347,7 +365,7 @@ const App: React.FC = () => {
 
       {/* Recommend */}
       {phase === 'recommend' && store.recommendation && (
-        <div className="overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
+        <div id="recommend-root" className="overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
           <div className="max-w-5xl mx-auto p-3 sm:p-4 pb-20 space-y-4">
             <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-indigo-600/20 rounded-xl p-5 text-center"><h2 className="text-xl font-bold text-white">测评完成</h2><div className="mt-2"><span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${store.recommendation.confidence_breakdown.total >= 70 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>置信度 {store.recommendation.confidence_breakdown.total}%</span></div></div>
 
@@ -382,7 +400,12 @@ const App: React.FC = () => {
             </div>
             {store.recommendation.conflicts.length > 0 && <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4"><h3 className="text-sm font-bold text-amber-300 mb-2">冲突点</h3>{store.recommendation.conflicts.map((c, i) => <div key={i} className="text-xs text-white/50 mb-1"><span className="text-amber-400">{c.type}</span>：{c.explanation}</div>)}</div>}
             <div className={`p-4 rounded-xl border flex gap-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}><i className="fas fa-comment-dots text-indigo-400" /> <p className="text-white/60 text-sm">{store.recommendation.final_note || '综合能力画像和专业匹配度，以上推荐供参考。'}</p></div>
-            <button onClick={handleRestart} className="w-full py-3 rounded-lg border border-white/20 text-white/60 hover:bg-white/10 transition-all text-sm">重新测评</button>
+            <div className="flex gap-3">
+              <button onClick={handleExport} disabled={loading} className="flex-1 py-3 rounded-lg font-semibold text-sm bg-indigo-500 hover:bg-indigo-600 text-white transition-all disabled:opacity-50">
+                <i className="fas fa-camera mr-2" />导出报告PNG
+              </button>
+              <button onClick={handleRestart} className="flex-1 py-3 rounded-lg border border-white/20 text-white/60 hover:bg-white/10 transition-all text-sm">重新测评</button>
+            </div>
           </div>
         </div>
       )}
@@ -392,6 +415,7 @@ const App: React.FC = () => {
 
       {/* Loading overlay */}
       {loading && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center"><div className="flex items-center gap-3 text-white/70"><i className="fas fa-spinner fa-spin text-2xl text-indigo-400" />AI分析中...</div></div>}
+      <Particles />
     </div>
   );
 };
