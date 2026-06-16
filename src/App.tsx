@@ -193,7 +193,9 @@ const App: React.FC = () => {
     if (phase !== 'scenario' || store.scenarioQuestions.length > 0 || loadingRef.current) return;
     loadingRef.current = true; setLoading(true);
     logLLM('scenario','start');
-    ds(store.apiKey, buildScenarioPrompt(profile, FIXED_QUESTIONS.map(q => q.primary_dim) as string[]))
+    const gk = store.gaokaoInfo;
+    const gkSummary = { province: gk.province, total_score: gk.total_score, gaokao_type: gk.gaokao_type, math: gk.math, chinese: gk.chinese, elective: gk.elective_subjects.map(s=>s.name).join(',') };
+    ds(store.apiKey, buildScenarioPrompt(profile, FIXED_QUESTIONS.map(q => q.primary_dim) as string[], gkSummary))
       .then(raw => {
         logLLM('scenario','ok');
         const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
