@@ -28,14 +28,17 @@ function cleanJson(raw: string): string {
 }
 
 async function ds(_apiKey: string, prompt: string): Promise<unknown> {
-  // Try Netlify proxy first (production only)
-  try {
-    const res = await fetch(PROXY, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
-    if(res.ok){const d=await res.json();if(d.content)return JSON.parse(cleanJson(d.content));}
-  } catch { /* proxy unreachable (local dev) — expected, fallback to direct */ }
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
-  // Direct DeepSeek call (local dev fallback)
-  if(!fallbackLogged){fallbackLogged=true;log('info','API','代理不可用，直连DeepSeek（本地开发模式，仅提示一次）');}
+  if (!isLocal) {
+    try {
+      const res = await fetch(PROXY, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
+      if(res.ok){const d=await res.json();if(d.content)return JSON.parse(cleanJson(d.content));}
+    } catch { /* fall through to direct */ }
+  }
+
+  if(isLocal && !fallbackLogged){fallbackLogged=true;log('info','API','本地开发模式，直连DeepSeek');}
+
   const res = await fetch(DEEPSEEK, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${DEV_KEY}`}, body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],temperature:0.7,max_tokens:4096,response_format:{type:'json_object'}}) });
   if(!res.ok){const t=await res.text();throw new Error(`API ${res.status}: ${t.slice(0,200)}`);}
   const d=await res.json();const raw=d.choices?.[0]?.message?.content;if(!raw)throw new Error('Empty');
