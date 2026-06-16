@@ -25,22 +25,24 @@ function MajorCloud({ majors, onMajorClick }: { majors: { major: MajorNode; cosi
   const groupRef = useRef<THREE.Group>(null);
   useFrame(() => { if (groupRef.current) groupRef.current.rotation.y += 0.0004; });
 
-  const sorted = useMemo(() => [...majors].sort((a,b)=>b.cosine_score-a.cosine_score).slice(0,25), [majors]);
+  const sorted = useMemo(() => [...majors].sort((a,b)=>b.cosine_score-a.cosine_score).slice(0,44), [majors]);
 
-  /* 3 concentric shells: inner(≥75, r≈1.8), mid(55-74, r≈3.2), outer(<55, r≈5.0) */
+  /* Percentile-based shell assignment: top 1/3 inner, mid 1/3 middle, bottom 1/3 outer */
   const { inner, mid, outer } = useMemo(() => {
     const i: typeof sorted = [], m: typeof sorted = [], o: typeof sorted = [];
-    for (const x of sorted) {
-      if (x.cosine_score >= 75) i.push(x);
-      else if (x.cosine_score >= 55) m.push(x);
-      else o.push(x);
+    const n = sorted.length;
+    for (let idx = 0; idx < n; idx++) {
+      const tier = idx < n / 3 ? 'inner' : idx < (2 * n) / 3 ? 'mid' : 'outer';
+      if (tier === 'inner') i.push(sorted[idx]);
+      else if (tier === 'mid') m.push(sorted[idx]);
+      else o.push(sorted[idx]);
     }
     return { inner: i, mid: m, outer: o };
   }, [sorted]);
 
   const innerPts = useMemo(() => fibonacciSphere(Math.max(inner.length, 1), 1.8), [inner.length]);
-  const midPts = useMemo(() => fibonacciSphere(Math.max(mid.length, 1), 3.2), [mid.length]);
-  const outerPts = useMemo(() => fibonacciSphere(Math.max(outer.length, 1), 5.0), [outer.length]);
+  const midPts = useMemo(() => fibonacciSphere(Math.max(mid.length, 1), 3.5), [mid.length]);
+  const outerPts = useMemo(() => fibonacciSphere(Math.max(outer.length, 1), 5.5), [outer.length]);
 
   const items = useMemo(() => {
     const all: { pos: [number,number,number]; m: typeof sorted[0] }[] = [];
