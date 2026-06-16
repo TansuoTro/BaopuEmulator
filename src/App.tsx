@@ -8,6 +8,7 @@ import { logLLM, logFallback, logPhase, log } from './utils/logger';
 import { useClickParticles } from './utils/particles';
 import UniverseScene from './components/3d/UniverseScene';
 import PersonalityAxes from './components/results/PersonalityAxes';
+import AnimeBackground from './components/layout/AnimeBackground';
 import html2canvas from 'html2canvas';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -347,19 +348,23 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const el = document.body;
+      // Temporarily allow full page scroll for capture
+      const prevOverflow = el.style.overflow;
+      el.style.overflow = 'visible';
       const canvas = await html2canvas(el, {
         backgroundColor: isDark ? '#080816' : '#fafafa',
         scale: 2, allowTaint: true, useCORS: true,
-        windowWidth: document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
         onclone: (clonedDoc) => {
           clonedDoc.querySelectorAll('style').forEach(s => s.remove());
           clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
           const safe = clonedDoc.createElement('style');
-          safe.textContent = `*{color-scheme:dark!important}body,div{background:#080816!important;color:#e2e8f0!important}.bg-white\\/5{background:rgba(255,255,255,0.05)!important}[class*="text-white"]{color:#e2e8f0!important}.text-emerald-300,[class*="text-emerald"]{color:#6ee7b7!important}.text-amber-300,[class*="text-amber"]{color:#fcd34d!important}.text-indigo-300{color:#a5b4fc!important}[class*="bg-indigo"]{background:#4f46e5!important}[class*="bg-emerald"]{background:#059669!important}button{color:white!important}`;
+          safe.textContent = `*{color-scheme:dark!important}body,div{background:#080816!important;color:#e2e8f0!important}.bg-white\\/5{background:rgba(255,255,255,0.05)!important}[class*="text-white"]{color:#e2e8f0!important}.text-emerald-300{color:#6ee7b7!important}.text-amber-300{color:#fcd34d!important}.text-indigo-300{color:#a5b4fc!important}[class*="bg-indigo"]{background:#4f46e5!important}[class*="bg-emerald"]{background:#059669!important}button{color:white!important}`;
           clonedDoc.head.appendChild(safe);
         },
       });
+      el.style.overflow = prevOverflow;
       const link = document.createElement('a');
       link.download = `BaopuEmulator_${store.nickname || 'report'}_${new Date().toISOString().slice(0,10)}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -376,6 +381,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
+      <AnimeBackground />
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
