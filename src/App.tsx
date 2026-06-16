@@ -181,9 +181,17 @@ const App: React.FC = () => {
   const [followupHint, setFollowupHint] = useState('');
   const [tookGaokao, setTookGaokao] = useState<boolean | null>(null);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
-  const [themeBlur, setThemeBlur] = useState(16);
-  const [themeOpacity, setThemeOpacity] = useState(55);
+  const [themeBlur, setThemeBlur] = useState(() => Number(localStorage.getItem('baopu-theme-blur') || 16));
+  const [themeOpacity, setThemeOpacity] = useState(() => Number(localStorage.getItem('baopu-theme-opacity') || 55));
   const [showThemePanel, setShowThemePanel] = useState(false);
+
+  // Apply CSS variables globally for glass/blur
+  useEffect(() => {
+    document.documentElement.style.setProperty('--glass-blur', `${themeBlur}px`);
+    document.documentElement.style.setProperty('--bg-opacity', `${themeOpacity}%`);
+    localStorage.setItem('baopu-theme-blur', String(themeBlur));
+    localStorage.setItem('baopu-theme-opacity', String(themeOpacity));
+  }, [themeBlur, themeOpacity]);
   const loadingRef = useRef(false);
   const submittingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
@@ -386,8 +394,7 @@ const App: React.FC = () => {
   return (
     <>
       <AnimeBackground />
-      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/60 text-white' : 'bg-zinc-50/70 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}
-      style={{'--glass-blur':`${themeBlur}px`,'--bg-opacity':`${themeOpacity}%`} as React.CSSProperties}>
+      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/60 text-white' : 'bg-zinc-50/70 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-xl ${isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
