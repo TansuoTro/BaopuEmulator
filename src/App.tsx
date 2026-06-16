@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useAssessmentStore } from './store/useAssessmentStore';
 import { FIXED_QUESTIONS, OPEN_QUESTIONS } from './data/questions';
-import { buildDynamicPrompt, buildScorePrompt, buildOpenTagsPrompt, buildRecommendPrompt, SYSTEM_PROMPT } from './llm/prompts';
+import { buildDynamicPrompt, buildScorePrompt, buildScenarioPrompt, buildScenarioScorePrompt, buildOpenTagsPrompt, buildRecommendPrompt, SYSTEM_PROMPT } from './llm/prompts';
 import { matchMajors, computeConfidence, detectConflicts } from './engine/scorer';
 import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, GAOKAO_YEARS } from './types';
 import UniverseScene from './components/3d/UniverseScene';
@@ -25,7 +25,7 @@ async function ds(apiKey: string, prompt: string): Promise<unknown> {
 
 /* ── Extracted GaokaoForm component (no hooks-in-conditionals) ── */
 const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onSubmit }) => {
-  const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[] });
+  const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'求职' });
   const u = (k: string, v: unknown) => setG(p => ({ ...p, [k]: v }));
   const can = g.province && g.total_score > 0 && g.chinese > 0 && g.math > 0 && g.english > 0;
   return (
@@ -46,6 +46,15 @@ const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onS
           <div><label className="text-xs text-white/50 block mb-1">数学</label><input type="number" value={g.math || ''} onChange={e => u('math', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
           <div><label className="text-xs text-white/50 block mb-1">英语</label><input type="number" value={g.english || ''} onChange={e => u('english', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
         </div>
+        <div>
+          <label className="text-xs text-white/50 block mb-1">毕业意🧭</label>
+          <select value={g.career_intention} onChange={e => u('career_intention', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white">
+            <option value="求职">求职 — 毕业直接找工作</option>
+            <option value="升学">升学 — 考研/保研/出国深造</option>
+            <option value="考公">考公 — 考公务员/事业编</option>
+            <option value="灵活就业">灵活就业 — 自己单干/创业/自由职业</option>
+          </select>
+        </div>
         <button onClick={() => onSubmit(g)} disabled={!can} className="w-full py-3.5 rounded-lg font-bold bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-30 transition-all">开始测评</button>
       </div>
     </div>
@@ -64,6 +73,16 @@ const ProfileBars: React.FC<{ p: UserProfile }> = ({ p }) => {
 };
 
 /* ── App ── */
+/* ── Fallback scenarios ── */
+function defaultScenarios(): DynamicQuestion[] {
+  return [
+    { id:'S01',question_type:'choice',target_discrimination:['pressure_tolerance','decision_confidence'],stem:'你同时接到三个任务：A导师让你明天交一份你完全不会的数据分析报告，B室友让你帮他改简历今晚就要，C你自己下周一有个重要考试还没复习。你怎么安排？',options:[{key:'A',text:'先应付导师，随便交一份过得去的'},{key:'B',text:'拒绝室友，专注自己的事'},{key:'C',text:'熬夜全部做完，宁可牺牲睡眠'},{key:'D',text:'找其他人帮忙分担一部分'},{key:'E',text:'跟导师说实话申请延期'}],input_hint:'',expected_signal:'抗压与决策风格'},
+    { id:'S02',question_type:'choice',target_discrimination:['emotion_stability','social'],stem:'你们小组项目拿了奖，但你从别人嘴里听到：组长把你的核心贡献归到了他自己名下。大家都在恭喜组长。你会怎么做？',options:[{key:'A',text:'私下找组长摊牌，要求他澄清'},{key:'B',text:'直接在群里公开事实'},{key:'C',text:'忍了，以后不跟这个人合作'},{key:'D',text:'找老师单独说明情况'},{key:'E',text:'无所谓，学到东西就行'}],input_hint:'',expected_signal:'冲突处理与情绪控制'},
+    { id:'S03',question_type:'choice',target_discrimination:['critical_thinking','rule_compliance'],stem:'实习时你发现带你的导师在系统里留了一个后门。他说"以前的人都有，方便调试"，让你别管。他教了你很多东西，你正需要他的推荐信。你怎么处理？',options:[{key:'A',text:'上报公司安全部门'},{key:'B',text:'不管了，导师说得对'},{key:'C',text:'私下再沟通一次，摆明利弊'},{key:'D',text:'匿名举报'},{key:'E',text:'做好记录，毕业再说'}],input_hint:'',expected_signal:'职业道德与规则意识'},
+    { id:'S04',question_type:'choice',target_discrimination:['social','independent_vs_team'],stem:'朋友圈里有人转了一篇文章，观点你强烈反对，底下几十条评论全是赞同。你和ta有共同好友，关系一般。你会公开表达反对意见吗？',options:[{key:'A',text:'公开评论反对，冷静列举事实'},{key:'B',text:'私下发消息表达看法'},{key:'C',text:'自己也写一篇长文回应'},{key:'D',text:'只跟亲近的朋友私下讨论'},{key:'E',text:'完全不管，没必要较真'}],input_hint:'',expected_signal:'社交风格与立场表达'},
+  ];
+}
+
 const App: React.FC = () => {
   const store = useAssessmentStore();
   const [apiInput, setApiInput] = useState('');
@@ -109,6 +128,32 @@ const App: React.FC = () => {
     catch { store.answerOpen(a); } finally { setLoading(false); }
   }, [store, store.apiKey]);
 
+  /* Scenario phase: fetch 4 scenario questions */
+  useEffect(() => {
+    if (phase !== 'scenario' || store.scenarioQuestions.length > 0 || loadingRef.current) return;
+    loadingRef.current = true; setLoading(true);
+    const hist = FIXED_QUESTIONS.map(q => q.primary_dim);
+    ds(store.apiKey, buildScenarioPrompt(profile, hist as unknown as string[]))
+      .then(raw => {
+        const d = raw as Record<string, unknown>; let qs: DynamicQuestion[] = [];
+        if (d.questions && Array.isArray(d.questions)) qs = (d.questions as Record<string, unknown>[]).filter(x => x && 'stem' in x) as unknown as DynamicQuestion[];
+        else if (Array.isArray(d)) qs = (d as unknown[]).filter(x => x && typeof x === 'object' && 'stem' in x) as unknown as DynamicQuestion[];
+        if (qs.length === 0) qs = defaultScenarios();
+        store.setScenarioQuestions(qs.slice(0, 4));
+      }).catch(e => { console.warn('Scenario fetch failed:', e); store.setScenarioQuestions(defaultScenarios()); })
+      .finally(() => { setLoading(false); loadingRef.current = false; });
+  }, [phase, store.scenarioQuestions.length, store.apiKey, profile, store]);
+
+  const handleScenarioAnswer = useCallback(async (a: string) => {
+    const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return; setLoading(true);
+    try {
+      const r = await ds(store.apiKey, buildScenarioScorePrompt(profile, q.stem, a));
+      const d = r as { updated_profile?: Record<string, number> };
+      if (d.updated_profile) { const p = { ...profile }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
+      store.answerScenario(a);
+    } catch (e) { store.addError((e as Error).message); } finally { setLoading(false); }
+  }, [store, profile, store.apiKey]);
+
   /* Recommend phase */
   useEffect(() => {
     if (phase !== 'recommend' || store.recommendation || loadingRef.current) return;
@@ -116,16 +161,17 @@ const App: React.FC = () => {
     const matched = matchMajors(profile);
     const confl = detectConflicts(profile);
     const conf = computeConfidence(store.fixedIndex, store.dynamicIndex, profile, confl, null);
-    const prompt = buildRecommendPrompt(profile, matched.slice(0, 10).map(m => ({ name: m.major.name, code: m.major.code, category: m.major.category, cosine_score: m.cosine_score, tags: m.major.tags })), confl, conf, store.openAnswers, store.gaokaoInfo);
+    const prompt = buildRecommendPrompt(profile, matched.slice(0, 10).map(m => ({ name: m.major.name, code: m.major.code, category: m.major.category, cosine_score: m.cosine_score, tags: m.major.tags })), confl, conf, store.openAnswers, store.scenarioAnswers, store.gaokaoInfo);
     ds(store.apiKey, prompt).then(raw => { const d = raw as RR; store.finalizeRecommendation(d); }).catch(e => { console.warn('Recommend failed:', e); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.recommendation, store.apiKey, profile, store]);
 
   const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); store.startAssessment(); };
   const handleRestart = () => { store.reset(); setSelectedMajor(null); loadingRef.current = false; };
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
-  const inAssess = phase === 'fixed' || phase === 'dynamic' || phase === 'open';
-  const totalQ = phase === 'fixed' ? 18 : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'open' ? 3 : 0;
-  const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'open' ? store.openIndex : 0;
+  const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;
+  const inAssess = phase === 'fixed' || phase === 'dynamic' || phase === 'scenario' || phase === 'open';
+  const totalQ = phase === 'fixed' ? 18 : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'scenario' ? store.scenarioQuestions.length || 4 : phase === 'open' ? 3 : 0;
+  const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`}>
@@ -133,7 +179,7 @@ const App: React.FC = () => {
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
         <div className="flex items-center gap-3"><i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator V3</span></div>
         <div className="flex items-center gap-3">
-          {inAssess && <span className="text-xs text-white/40">{phase === 'fixed' ? '固定' : phase === 'dynamic' ? '消歧' : '开放'} {curQ + 1}/{totalQ}</span>}
+          {inAssess && <span className="text-xs text-white/40">{phase === 'fixed' ? '固定' : phase === 'dynamic' ? '消歧' : phase === 'scenario' ? '情景' : '开放'} {curQ + 1}/{totalQ}</span>}
           <button onClick={store.toggleTheme} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-zinc-100 text-zinc-500'}`}><i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`} /></button>
         </div>
       </header>
@@ -160,7 +206,7 @@ const App: React.FC = () => {
         <div className={`assessment-shell ${isDark ? '' : 'assessment-shell-light'}`}>
           <div className="hidden lg:block left-col">
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100/80 border-zinc-200'}`}>
-              <h3 className="text-xs font-bold mb-3">{phase === 'fixed' ? '阶段一：基础画像' : phase === 'dynamic' ? '阶段二：深度消歧' : '阶段三：动机补足'}</h3>
+              <h3 className="text-xs font-bold mb-3">{phase === 'fixed' ? '阶段一：基础画像' : phase === 'dynamic' ? '阶段二：深度消歧' : phase === 'scenario' ? '阶段三：情景决断' : '阶段四：动机补足'}</h3>
               <div className="h-1.5 bg-white/10 rounded-full mb-3"><div className="h-full bg-indigo-500 rounded-full" style={{ width: `${totalQ ? Math.round(curQ / totalQ * 100) : 0}%` }} /></div>
               <div className="text-xs text-white/30">{curQ}/{totalQ} 题</div>
             </div>
@@ -181,6 +227,13 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-2 text-xs"><span className="text-purple-400">消歧 {store.dynamicIndex + 1}/{store.dynamicQuestions.length}</span></div>
                   <p className="text-white/90">{curDynamic.stem}</p>
                   {curDynamic.question_type === 'choice' ? <div className="space-y-2">{curDynamic.options.map(o => <button key={o.key} onClick={() => handleDynamicAnswer(o.key)} disabled={loading} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-purple-400 hover:bg-purple-500/10 text-white/70 text-sm transition-all disabled:opacity-50"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div> : <div><input type="text" onKeyDown={e => { if (e.key === 'Enter') handleDynamicAnswer((e.target as HTMLInputElement).value); }} placeholder={curDynamic.input_hint || '输入回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm" /></div>}
+                </div>
+              )}
+              {phase === 'scenario' && curScenario && (
+                <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-rose-500/20' : 'bg-white border-rose-200 shadow-sm'}`}>
+                  <div className="flex items-center gap-2 text-xs"><span className="text-rose-400">情景 {store.scenarioIndex + 1}/{store.scenarioQuestions.length}</span><span className="text-white/30">· 临场发挥</span></div>
+                  <p className="text-white/90">{curScenario.stem}</p>
+                  {curScenario.question_type === 'choice' ? <div className="space-y-2">{curScenario.options.map(o => <button key={o.key} onClick={() => handleScenarioAnswer(o.key)} disabled={loading} className="w-full text-left px-4 py-3 rounded-lg border border-white/10 hover:border-rose-400 hover:bg-rose-500/10 text-white/70 text-sm transition-all disabled:opacity-50"><span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs mr-3">{o.key}</span>{o.text}</button>)}</div> : <div><input type="text" onKeyDown={e => { if (e.key === 'Enter') handleScenarioAnswer((e.target as HTMLInputElement).value); }} placeholder={curScenario.input_hint || '输入回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm" /></div>}
                 </div>
               )}
               {phase === 'open' && OPEN_QUESTIONS[store.openIndex] && (
@@ -215,6 +268,12 @@ const App: React.FC = () => {
             </div>
             <p className="text-xs text-white/30 text-center -mt-2">拖拽旋转 · 滚轮缩放 · 点击球体查看专业详情 · 距离越近匹配度越高</p>
 
+            {store.recommendation.personality_sketch && (
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/20' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}`}>
+                <h3 className="text-sm font-bold mb-2 flex items-center gap-2"><i className="fas fa-user-astronaut text-indigo-400" /> 人物侧写</h3>
+                <p className="text-sm leading-relaxed text-white/70">{store.recommendation.personality_sketch}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}><h3 className="text-sm font-bold mb-3"><i className="fas fa-chart-bar text-indigo-400 mr-2" />能力画像</h3><ProfileBars p={profile} /></div>
               <div className={`p-4 rounded-xl border overflow-y-auto max-h-96 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-zinc-200'}`}>

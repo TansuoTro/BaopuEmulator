@@ -16,6 +16,7 @@ interface AssessmentStore {
   profile: UserProfile; scoreLogs: ScoreLog[];
   fixedAnswers: Record<string,string>; fixedIndex: number;
   dynamicQuestions: DynamicQuestion[]; dynamicIndex: number; dynamicAnswers: Record<string,string>;
+  scenarioQuestions: DynamicQuestion[]; scenarioIndex: number; scenarioAnswers: Record<string,string>;
   openIndex: number; openAnswers: Record<string,string>;
   matchedMajors: { major: MajorNode; cosine_score: number }[];
   recommendation: RecommendationResult | null;
@@ -26,8 +27,10 @@ interface AssessmentStore {
   startAssessment: ()=>void;
   answerFixed: (a:string)=>void;
   answerDynamic: (a:string)=>void;
+  answerScenario: (a:string)=>void;
   answerOpen: (a:string)=>void;
   setDynamicQuestions: (qs:DynamicQuestion[])=>void;
+  setScenarioQuestions: (qs:DynamicQuestion[])=>void;
   updateProfileDynamic: (dim: keyof UserProfile, delta: number)=>void;
   applyOpenResult: (rawTags:{tags?:string[]})=>void;
   finalizeRecommendation: (llmData: Partial<RecommendationResult>)=>void;
@@ -40,6 +43,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
     gaokaoInfo:{...DEFAULT_GAOKAO},profile:{...DEFAULT_PROFILE},scoreLogs:[],
     fixedAnswers:{},fixedIndex:0,
     dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
+    scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
     openIndex:0,openAnswers:{},
     matchedMajors:[],recommendation:null,errors:[],
 
@@ -50,6 +54,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
       phase:'gaokao',profile:{...DEFAULT_PROFILE},scoreLogs:[],
       gaokaoInfo:{...DEFAULT_GAOKAO},fixedAnswers:{},fixedIndex:0,
       dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
+      scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
       openIndex:0,openAnswers:{},recommendation:null,matchedMajors:[],errors:[],
     }),
     answerFixed:a=>{
@@ -64,8 +69,14 @@ export const useAssessmentStore = create<AssessmentStore>()(
     answerDynamic:a=>{
       const s=get(); const q=s.dynamicQuestions[s.dynamicIndex]; if(!q)return;
       const ans={...s.dynamicAnswers,[q.id]:a}; const idx=s.dynamicIndex+1;
-      if(idx>=s.dynamicQuestions.length) set({dynamicAnswers:ans,dynamicIndex:idx,phase:'open'});
+      if(idx>=s.dynamicQuestions.length) set({dynamicAnswers:ans,dynamicIndex:idx,phase:'scenario'});
       else set({dynamicAnswers:ans,dynamicIndex:idx});
+    },
+    answerScenario:a=>{
+      const s=get(); const q=s.scenarioQuestions[s.scenarioIndex]; if(!q)return;
+      const ans={...s.scenarioAnswers,[q.id]:a}; const idx=s.scenarioIndex+1;
+      if(idx>=s.scenarioQuestions.length) set({scenarioAnswers:ans,scenarioIndex:idx,phase:'open'});
+      else set({scenarioAnswers:ans,scenarioIndex:idx});
     },
     answerOpen:a=>{
       const s=get(); const q=OPEN_QUESTIONS[s.openIndex]; if(!q)return;
@@ -74,6 +85,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
       else set({openAnswers:ans,openIndex:idx});
     },
     setDynamicQuestions:qs=>set({dynamicQuestions:qs}),
+    setScenarioQuestions:qs=>set({scenarioQuestions:qs}),
     updateProfileDynamic:(dim,delta)=>set(s=>({profile:applyDynamicScore(s.profile,dim,delta)})),
     applyOpenResult:rawTags=>set(s=>{
       const result=openTagsToDimensions(rawTags);
@@ -97,6 +109,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
           top_majors:top,
           conflicts,
           keywords:s.profile.math>70?['数理强']:s.profile.language>70?['语言强']:['综合型'],
+          personality_sketch:llmData.personality_sketch||'',
           final_note:llmData.final_note||'',
           score_logs:s.scoreLogs,
         },
@@ -110,12 +123,14 @@ export const useAssessmentStore = create<AssessmentStore>()(
       gaokaoInfo:{...DEFAULT_GAOKAO},profile:{...DEFAULT_PROFILE},scoreLogs:[],
       fixedAnswers:{},fixedIndex:0,
       dynamicQuestions:[],dynamicIndex:0,dynamicAnswers:{},
+      scenarioQuestions:[],scenarioIndex:0,scenarioAnswers:{},
       openIndex:0,openAnswers:{},matchedMajors:[],recommendation:null,errors:[],
     }),
   }),{name:'baopu-session',partialize:s=>({
     phase:s.phase,sessionId:s.sessionId,gaokaoInfo:s.gaokaoInfo,profile:s.profile,
     scoreLogs:s.scoreLogs,fixedAnswers:s.fixedAnswers,fixedIndex:s.fixedIndex,
     dynamicQuestions:s.dynamicQuestions,dynamicIndex:s.dynamicIndex,dynamicAnswers:s.dynamicAnswers,
+    scenarioQuestions:s.scenarioQuestions,scenarioIndex:s.scenarioIndex,scenarioAnswers:s.scenarioAnswers,
     openIndex:s.openIndex,openAnswers:s.openAnswers,recommendation:s.recommendation,
     apiKey:s.apiKey,
   })})
