@@ -8,51 +8,77 @@ import { Major } from '../../types';
 
 interface Props {
   majors: { major: Major; score: number }[];
-  profileKeywords: string[];
   onMajorClick?: (major: Major) => void;
 }
 
-function fibonacciSphere(n: number, radius: number): [number, number, number][] {
-  const points: [number, number, number][] = [];
-  const phi = Math.PI * (3 - Math.sqrt(5));
+function ringPositions(n: number, radius: number, angleOffset = 0): [number, number, number][] {
+  const pts: [number, number, number][] = [];
   for (let i = 0; i < n; i++) {
-    const y = 1 - (i / (n - 1)) * 2;
-    const r = Math.sqrt(1 - y * y);
-    const theta = phi * i;
-    points.push([Math.cos(theta) * r * radius, y * radius, Math.sin(theta) * r * radius]);
+    const angle = (i / n) * Math.PI * 2 + angleOffset;
+    pts.push([Math.cos(angle) * radius, 0, Math.sin(angle) * radius]);
   }
-  return points;
+  return pts;
 }
 
-function MajorCloud({ majors, onMajorClick }: { majors: { major: Major; score: number }[]; onMajorClick?: (major: Major) => void }) {
+function spiralPositions(n: number, baseRadius: number, height: number): [number, number, number][] {
+  const pts: [number, number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1 || 1);
+    const angle = t * Math.PI * 4;
+    const r = baseRadius + t * 0.5;
+    const y = (t - 0.5) * height;
+    pts.push([Math.cos(angle) * r, y, Math.sin(angle) * r]);
+  }
+  return pts;
+}
+
+function MajorCloud({ majors, onMajorClick }: {
+  majors: { major: Major; score: number }[];
+  onMajorClick?: (major: Major) => void;
+}) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += 0.0005;
-    }
+    if (groupRef.current) groupRef.current.rotation.y += 0.0003;
   });
 
-  const positions = useMemo(() => {
-    const top = majors.slice(0, 15);
-    return fibonacciSphere(top.length, 3.5).map((pos, i) => {
-      const d = 1 - top[i].score / 100;
-      return [pos[0] * (0.6 + d * 1.2), pos[1] * (0.6 + d * 1.2), pos[2] * (0.6 + d * 1.2)] as [number, number, number];
-    });
-  }, [majors]);
+  const sorted = useMemo(() => [...majors].sort((a, b) => b.score - a.score).slice(0, 15), [majors]);
 
-  const top = majors.slice(0, 15);
+  const positions = useMemo(() => {
+    const inner: { major: Major; score: number }[] = [];
+    const mid: { major: Major; score: number }[] = [];
+    const outer: { major: Major; score: number }[] = [];
+
+    for (const m of sorted) {
+      if (m.score >= 75) inner.push(m);
+      else if (m.score >= 55) mid.push(m);
+      else outer.push(m);
+    }
+
+    const result: { pos: [number, number, number]; major: Major; score: number }[] = [];
+
+    const innerRings = ringPositions(Math.max(inner.length, 1), 1.5);
+    inner.forEach((m, i) => result.push({ pos: innerRings[i % innerRings.length], ...m }));
+
+    const midSpiral = spiralPositions(Math.max(mid.length, 1), 2.5, 1.8);
+    mid.forEach((m, i) => result.push({ pos: midSpiral[i % midSpiral.length], ...m }));
+
+    const outerSpiral = spiralPositions(Math.max(outer.length, 1), 4.0, 2.5);
+    outer.forEach((m, i) => result.push({ pos: outerSpiral[i % outerSpiral.length], ...m }));
+
+    return result;
+  }, [sorted]);
 
   return (
     <group ref={groupRef}>
-      {top.map((m, i) => (
+      {positions.map((item) => (
         <MajorSphere
-          key={m.major.major_name}
-          position={positions[i]}
-          color={m.major.color}
-          name={m.major.major_name}
-          score={m.score}
-          onClick={() => onMajorClick?.(m.major)}
+          key={item.major.major_name}
+          position={item.pos}
+          color={item.major.color}
+          name={item.major.major_name}
+          score={item.score}
+          onClick={() => onMajorClick?.(item.major)}
         />
       ))}
     </group>
@@ -61,27 +87,21 @@ function MajorCloud({ majors, onMajorClick }: { majors: { major: Major; score: n
 
 const MajorUniverse: React.FC<Props> = ({ majors, onMajorClick }) => {
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden bg-black/60 backdrop-blur-sm border border-white/10">
+    <div className="w-full h-full rounded-xl overflow-hidden border border-white/10" style={{ background: '#0a0a1a' }}>
       <Canvas
-        camera={{ position: [0, 0, 8], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent' }}
+        camera={{ position: [0, 2.5, 8], fov: 50 }}
+        gl={{ antialias: true, alpha: false }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.4} />
-          <pointLight position={[10, 10, 10]} intensity={1.5} color="#ffffff" />
-          <pointLight position={[-5, -3, -5]} intensity={0.5} color="#4f46e5" />
-          <Stars radius={20} depth={50} count={800} factor={4} saturation={0} fade speed={0.5} />
-          <Environment preset="city" />
-          <UserSphere position={[0, 0, 0]} color="#f59e0b" radius={0.35} />
+          <ambientLight intensity={0.35} />
+          <pointLight position={[8, 8, 8]} intensity={1.2} color="#ffffff" />
+          <pointLight position={[-5, -3, -5]} intensity={0.4} color="#4f46e5" />
+          <pointLight position={[0, 0, 0]} intensity={0.8} color="#f59e0b" />
+          <Stars radius={25} depth={60} count={600} factor={4} saturation={0} fade speed={0.3} />
+          <Environment preset="night" />
+          <UserSphere position={[0, 0, 0]} color="#f59e0b" radius={0.3} />
           <MajorCloud majors={majors} onMajorClick={onMajorClick} />
-          <OrbitControls
-            enableDamping
-            dampingFactor={0.05}
-            minDistance={4}
-            maxDistance={12}
-            maxPolarAngle={Math.PI * 0.8}
-          />
+          <OrbitControls enableDamping dampingFactor={0.05} minDistance={3} maxDistance={12} maxPolarAngle={Math.PI * 0.75} />
         </Suspense>
       </Canvas>
     </div>

@@ -2,34 +2,135 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+*::-webkit-scrollbar { width: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 2px; }
+
+body { margin: 0; }
+canvas { display: block; }
+
+/* ── Theme-aware text-secondary ── */
+.text-secondary {
+  color: rgba(148, 163, 184, 0.8);
+}
+:root .text-secondary {
+  color: rgba(148, 163, 184, 0.8);
 }
 
-*::-webkit-scrollbar {
-  width: 4px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-
-body {
-  margin: 0;
+/* ── Assessment layout ── */
+.assessment-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
 }
 
 @media (min-width: 1024px) {
-  body {
-    overflow: hidden;
+  body { overflow: hidden; }
+  .assessment-shell {
+    display: grid;
+    grid-template-columns: 170px 1fr 250px;
+    grid-template-rows: calc(100vh - 56px);
+    gap: 12px;
+    padding: 12px;
+    max-width: 1440px;
+    margin: 0 auto;
+    height: calc(100vh - 56px);
   }
 }
 
-canvas {
-  display: block;
+.scene-box {
+  width: 100%;
+  height: 260px;
+}
+
+@media (min-width: 640px) {
+  .scene-box { height: 340px; }
+}
+
+@media (min-width: 1024px) {
+  .scene-box {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.center-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .center-col {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .question-area {
+    max-height: 42%;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+}
+
+/* ── Shared form elements for light/dark ── */
+.input-native {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+  outline: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #e2e8f0;
+}
+.input-native:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.input-native::placeholder {
+  color: rgba(255,255,255,0.25);
+}
+
+/* Light overrides: body.light or :root light mode */
+@media (prefers-color-scheme: light) {
+  .input-native {
+    background: #f4f4f5;
+    border: 1px solid #d4d4d8;
+    color: #18181b;
+  }
+  .input-native::placeholder {
+    color: #a1a1aa;
+  }
+  .input-native:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+}
+
+/* Force dark on scene containers */
+.scene-box,
+.scene-box * {
+  color-scheme: dark;
 }
 
 @keyframes pulse-glow {

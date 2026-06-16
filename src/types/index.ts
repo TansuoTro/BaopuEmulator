@@ -12,7 +12,23 @@ export type MajorCategory =
   | '艺术学'
   | '理学（形而上人文社科）';
 
-export type Phase = 'idle' | 'fixed' | 'dynamic' | 'open' | 'recommend' | 'error';
+export type Phase = 'idle' | 'gaokao' | 'fixed' | 'dynamic' | 'open' | 'recommend' | 'error';
+
+export type GaokaoType = '新高考' | '旧高考-理综' | '旧高考-文综';
+
+export interface GaokaoInfo {
+  year: number;
+  province: string;
+  total_score: number;
+  provincial_rank: number;
+  gaokao_type: GaokaoType;
+  chinese: number;
+  math: number;
+  english: number;
+  composite_score: number;
+  elective_subjects: { name: string; score: number }[];
+  target_provinces: string[];
+}
 
 export type QuestionType = 'choice' | 'fill';
 
@@ -147,5 +163,30 @@ export const DEFAULT_PROFILE: UserProfile = {
 };
 
 export const PHASE_TOTAL: Record<Phase, number> = {
-  idle: 0, fixed: 15, dynamic: 5, open: 3, recommend: 0, error: 0,
+  idle: 0, gaokao: 0, fixed: 15, dynamic: 5, open: 3, recommend: 0, error: 0,
+};
+
+export const PROVINCES = [
+  '北京','天津','上海','重庆','河北','山西','辽宁','吉林','黑龙江',
+  '江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南',
+  '广东','海南','四川','贵州','云南','陕西','甘肃','青海','台湾',
+  '内蒙古','广西','西藏','宁夏','新疆','香港','澳门',
+];
+
+export const GAOKAO_YEARS = Array.from({ length: 26 }, (_, i) => 2025 - i);
+
+export const NEW_GAOKAO_SUBJECTS = ['物理','化学','生物','历史','政治','地理','技术'];
+
+export const DEFAULT_GAOKAO: GaokaoInfo = {
+  year: 2025,
+  province: '',
+  total_score: 0,
+  provincial_rank: 0,
+  gaokao_type: '新高考',
+  chinese: 0,
+  math: 0,
+  english: 0,
+  composite_score: 0,
+  elective_subjects: [],
+  target_provinces: [],
 };

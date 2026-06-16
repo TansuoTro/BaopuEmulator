@@ -9,6 +9,7 @@ interface Props {
 
 const PHASE_LABELS: Record<Phase, string> = {
   idle: '',
+  gaokao: '高考信息',
   fixed: '第一阶段：基础画像',
   dynamic: '第二阶段：深度消歧',
   open: '第三阶段：动机补足',

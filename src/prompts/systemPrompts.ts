@@ -1,4 +1,4 @@
-import { UserProfile, Conflict } from '../types';
+import { UserProfile, Conflict, GaokaoInfo } from '../types';
 
 export const SYSTEM_PROMPT = `你是一个严格的教育测评与专业推荐引擎。
 你必须只输出JSON，不能输出任何额外文本。
@@ -118,6 +118,7 @@ export function buildRecommendPrompt(
   conflicts: { dimension: string; reason: string }[],
   confidence: number,
   openAnswers: Record<string, string>,
+  gaokaoInfo: GaokaoInfo,
 ): string {
   return JSON.stringify({
     task: 'recommend',
@@ -126,6 +127,21 @@ export function buildRecommendPrompt(
     conflicts,
     confidence_level: confidence,
     open_question_answers: Object.entries(openAnswers).map(([id, ans]) => ({ id, answer: ans })),
-    instruction: '综合所有维度，输出Top 5专业推荐，每个专业必须说明匹配理由、风险和适合/不适合人群。top_majors必须按score从高到低严格排序。所有专业名必须使用中国本科标准名称。',
+    gaokao_data: {
+      year: gaokaoInfo.year,
+      province: gaokaoInfo.province,
+      total_score: gaokaoInfo.total_score,
+      provincial_rank: gaokaoInfo.provincial_rank,
+      gaokao_type: gaokaoInfo.gaokao_type,
+      subjects: {
+        chinese: gaokaoInfo.chinese,
+        math: gaokaoInfo.math,
+        english: gaokaoInfo.english,
+        composite_score: gaokaoInfo.composite_score,
+        elective: gaokaoInfo.elective_subjects,
+      },
+      target_provinces: gaokaoInfo.target_provinces,
+    },
+    instruction: '综合用户画像、高考成绩、选科、排名和目标省份，输出Top 5专业推荐。高考成绩高+数学强→推荐高要求工科/理学；语文英语强→推荐文科/法学/外语；选科偏向→对应学科门类。必须考虑省份和排名因素。top_majors必须按score从高到低严格排序。所有专业名必须使用中国本科标准名称。每个专业必须结合高考数据给出具体解释。',
   });
 }
