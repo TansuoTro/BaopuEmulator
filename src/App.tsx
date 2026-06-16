@@ -17,6 +17,7 @@ log('info','App','BaopuEmulator V4 启动',{majors:44,questions:18,backend:'Netl
 const PROXY = '/.netlify/functions/api-proxy';
 const DEEPSEEK = 'https://api.deepseek.com/v1/chat/completions';
 const DEV_KEY = 'sk-591f2f855fad483ba302d48d8ad3aea2';
+let fallbackLogged = false;
 
 function cleanJson(raw: string): string {
   let c = raw.trim();
@@ -27,13 +28,14 @@ function cleanJson(raw: string): string {
 }
 
 async function ds(_apiKey: string, prompt: string): Promise<unknown> {
-  // Try Netlify proxy first (production)
+  // Try Netlify proxy first (production only)
   try {
     const res = await fetch(PROXY, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
     if(res.ok){const d=await res.json();if(d.content)return JSON.parse(cleanJson(d.content));}
-  } catch { /* proxy unavailable, fall back to direct */ }
+  } catch { /* proxy unreachable (local dev) — expected, fallback to direct */ }
 
   // Direct DeepSeek call (local dev fallback)
+  if(!fallbackLogged){fallbackLogged=true;log('info','API','代理不可用，直连DeepSeek（本地开发模式，仅提示一次）');}
   const res = await fetch(DEEPSEEK, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${DEV_KEY}`}, body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],temperature:0.7,max_tokens:4096,response_format:{type:'json_object'}}) });
   if(!res.ok){const t=await res.text();throw new Error(`API ${res.status}: ${t.slice(0,200)}`);}
   const d=await res.json();const raw=d.choices?.[0]?.message?.content;if(!raw)throw new Error('Empty');
