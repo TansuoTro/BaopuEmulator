@@ -35,10 +35,13 @@ async function ds(_apiKey: string, prompt: string): Promise<unknown> {
 const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onSubmit }) => {
   const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'不清楚' });
   const u = (k: string, v: unknown) => setG(p => ({ ...p, [k]: v }));
-  const can = g.province && g.total_score > 0 && g.chinese > 0 && g.math > 0 && g.english > 0;
-  const maxScore = PROVINCE_MAX_SCORE[g.province] || 750;
   const isOldGaokao = g.gaokao_type.startsWith('旧高考');
   const isSci = g.gaokao_type === '旧高考-理综';
+  const autoTotal = g.chinese + g.math + g.english + (isOldGaokao ? g.composite_score : g.elective_subjects.reduce((s,sub)=>s+(sub.score||0), 0));
+  const can = g.province && autoTotal > 0 && g.chinese > 0 && g.math > 0 && g.english > 0;
+  // Sync autoTotal back to state
+  if (autoTotal !== g.total_score && autoTotal > 0) u('total_score', autoTotal);
+  const maxScore = PROVINCE_MAX_SCORE[g.province] || 750;
   const electSubs = ['物理','化学','生物','历史','政治','地理','技术'];
   return (
     <div className="max-w-xl mx-auto p-4 sm:p-6 space-y-5 overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
@@ -54,7 +57,7 @@ const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onS
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="text-xs text-white/50 block mb-1">总分 (满分{maxScore})</label><input type="number" value={g.total_score || ''} onChange={e => u('total_score', +e.target.value)} placeholder={`0~${maxScore}`} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
+          <div><label className="text-xs text-white/50 block mb-1">总分 (满分{maxScore}，自动计算)</label><input type="text" value={autoTotal || ''} readOnly className={`w-full p-2 rounded text-sm font-bold ${autoTotal>0?'text-emerald-300':'text-white/30'} bg-white/5 border border-white/10`} /></div>
           <div><label className="text-xs text-white/50 block mb-1">排名(可选)</label><input type="number" value={g.provincial_rank || ''} onChange={e => u('provincial_rank', +e.target.value)} placeholder="选填" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
         </div>
         <div className="grid grid-cols-3 gap-3">
