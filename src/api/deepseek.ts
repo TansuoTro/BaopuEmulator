@@ -1,103 +1,86 @@
-import { EngineResponse } from '../types';
 import { SYSTEM_PROMPT } from '../prompts/systemPrompts';
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 
-let apiKey: string | null = null;
-
-export function setApiKey(key: string): void {
-  apiKey = key;
+function cleanJson(raw: string): string {
+  let c = raw.trim();
+  if (c.startsWith('```json')) c = c.slice(7);
+  else if (c.startsWith('```')) c = c.slice(3);
+  if (c.endsWith('```')) c = c.slice(0, -3);
+  c = c.trim();
+  const a = c.indexOf('{');
+  const b = c.lastIndexOf('}');
+  if (a !== -1 && b !== -1 && b > a) c = c.slice(a, b + 1);
+  return c;
 }
 
-export function getApiKey(): string | null {
-  return apiKey;
-}
+export async function callDeepSeek(
+  apiKey: string,
+  userPrompt: string,
+  useJsonMode = true,
+): Promise<unknown> {
+  const body: Record<string, unknown> = {
+    model: 'deepseek-chat',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 4096,
+    stream: false,
+  };
 
-function cleanJsonOutput(raw: string): string {
-  let cleaned = raw.trim();
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
-  }
-  return cleaned;
-}
-
-export async function callDeepSeek(userPrompt: string): Promise<EngineResponse> {
-  if (!apiKey) {
-    throw new Error('API Key 未设置，请在首页输入 DeepSeek API Key');
+  if (useJsonMode) {
+    body.response_format = { type: 'json_object' };
   }
 
-  const response = await fetch(DEEPSEEK_API_URL, {
+  const res = await fetch(DEEPSEEK_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-      stream: false,
-    }),
+    body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    let errMsg = `API 错误 ${response.status}`;
-    try {
-      const errJson = JSON.parse(errBody);
-      errMsg = errJson.error?.message || errMsg;
-    } catch {
-      // use raw text
-    }
-    throw new Error(errMsg);
+  if (!res.ok) {
+    const txt = await res.text();
+    let msg = `API ${res.status}`;
+    try { msg = JSON.parse(txt).error?.message || msg; } catch { /* raw */ }
+    throw new Error(msg);
   }
 
-  const data = await response.json();
-  const rawContent = data.choices?.[0]?.message?.content;
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error('API返回为空');
 
-  if (!rawContent) {
-    throw new Error('API 返回内容为空');
-  }
-
-  const cleaned = cleanJsonOutput(rawContent);
-
-  let parsed: EngineResponse;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`JSON 解析失败。原始返回: ${rawContent.slice(0, 200)}`);
-  }
-
-  if (!parsed.type || !['question', 'score', 'recommend', 'error'].includes(parsed.type)) {
-    throw new Error(`无效的响应类型: ${(parsed as unknown as Record<string, unknown>).type}`);
-  }
-
-  return parsed;
+  return JSON.parse(cleanJson(raw));
 }
 
-export async function generateQuestion(userPrompt: string): Promise<EngineResponse> {
-  return callDeepSeek(userPrompt);
+export async function getDynamicQuestions(
+  apiKey: string,
+  prompt: string,
+): Promise<unknown> {
+  return callDeepSeek(apiKey, prompt, true);
 }
 
-export async function scoreAnswer(userPrompt: string): Promise<EngineResponse> {
-  return callDeepSeek(userPrompt);
+export async function scoreDynamicAnswer(
+  apiKey: string,
+  prompt: string,
+): Promise<unknown> {
+  return callDeepSeek(apiKey, prompt, true);
 }
 
-export async function getRecommendations(userPrompt: string): Promise<EngineResponse> {
-  return callDeepSeek(userPrompt);
+export async function extractOpenTags(
+  apiKey: string,
+  prompt: string,
+): Promise<unknown> {
+  return callDeepSeek(apiKey, prompt, true);
+}
+
+export async function getRecommendResult(
+  apiKey: string,
+  prompt: string,
+): Promise<unknown> {
+  return callDeepSeek(apiKey, prompt, true);
 }
