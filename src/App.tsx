@@ -24,7 +24,7 @@ import FixedQuestionCard from './components/questions/FixedQuestionCard';
 import DynamicQuestionCard from './components/questions/DynamicQuestionCard';
 import OpenQuestionCard from './components/questions/OpenQuestionCard';
 import GaokaoForm from './components/questions/GaokaoForm';
-import RecommendResult from './components/results/RecommendResult';
+import RecommendDashboard from './components/results/RecommendDashboard';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const App: React.FC = () => {
@@ -324,10 +324,17 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Recommend */}
+      {/* Recommend — full scrollable dashboard */}
       {store.phase === 'recommend' && store.recommendResult && (
-        <div className="max-w-3xl mx-auto p-4 pb-10">
-          <RecommendResult result={store.recommendResult} onRestart={handleRestart} selectedMajor={selectedMajor} onSelectMajor={setSelectedMajor} />
+        <div className="overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
+          <RecommendDashboard
+            result={store.recommendResult}
+            profile={store.profile}
+            matchedMajors={store.matchedMajors}
+            onRestart={handleRestart}
+            selectedMajor={selectedMajor}
+            onSelectMajor={setSelectedMajor}
+          />
         </div>
       )}
 
