@@ -87,7 +87,7 @@ export function buildScenarioScorePrompt(profile: UserProfile, stem: string, ans
     current_profile: profile,
     scenario_stem: stem,
     user_answer: answer,
-    instruction: '判断回答质量。太短(<15字)→{"needs_followup":true,"followup_prompt":"具体追问"}。足够→分析人格倾向，更新受影响维度(0~100): social/emotion_stability/decision_confidence/pressure_tolerance/rule_compliance/critical_thinking/independent_vs_team。',
+    instruction: '判断回答质量。太短(<10字)→{"needs_followup":true,"followup_prompt":"具体追问"}。足够→分析人格倾向，更新受影响维度(0~100): social/emotion_stability/decision_confidence/pressure_tolerance/rule_compliance/critical_thinking/independent_vs_team。',
     output_format: '回答不足:{"needs_followup":true,"followup_prompt":"..."} 充分:{"needs_followup":false,"updated_profile":{"social":65},"analysis":"..."}',
   });
 }
