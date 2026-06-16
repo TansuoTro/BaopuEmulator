@@ -50,35 +50,41 @@ const App: React.FC = () => {
     const history = FIXED_QUESTIONS.map((q) => q.dimension);
     const prompt = buildDynamicPrompt(store.profile, [], history);
 
+    const fallbackQuestions: DynamicQuestion[] = FIXED_QUESTIONS.slice(0, 5).map((fq, i) => ({
+      id: `D${i + 1}`,
+      dimension: 'ability',
+      sub_dimension: fq.sub_dimensions[0]?.key || 'logic',
+      question_type: 'choice' as const,
+      stem: `再确认一次：${fq.stem}`,
+      options: fq.options.map((o) => ({ key: o.key, text: o.text })),
+      input_hint: '',
+      expected_signal: `确认${fq.dimension}倾向`,
+    }));
+
     getDynamicQuestions(apiKey, prompt)
       .then((raw) => {
-        const data = raw as { type: string; questions?: DynamicQuestion[] } | DynamicQuestion[];
+        const data = raw as Record<string, unknown>;
         let questions: DynamicQuestion[] = [];
+
         if (Array.isArray(data)) {
-          questions = data.filter((d: unknown) => (d as unknown as DynamicQuestion).stem);
-        } else if ((data as { questions?: DynamicQuestion[] }).questions) {
-          questions = (data as { questions: DynamicQuestion[] }).questions;
-        } else if ((data as unknown as DynamicQuestion).stem) {
+          questions = data.filter((d) => d && typeof d === 'object' && 'stem' in d) as DynamicQuestion[];
+        } else if (data.questions && Array.isArray(data.questions)) {
+          questions = (data.questions as Record<string, unknown>[]).filter((d) => d && 'stem' in d) as unknown as DynamicQuestion[];
+        } else if (data.type === 'question' && data.stem) {
           questions = [data as unknown as DynamicQuestion];
         }
+
         if (questions.length === 0) {
-          questions = FIXED_QUESTIONS.slice(0, 5).map((fq, i) => ({
-            id: `D${i + 1}`,
-            dimension: 'ability',
-            sub_dimension: fq.sub_dimensions[0]?.key || 'logic',
-            question_type: 'choice',
-            stem: `再确认一次：${fq.stem}`,
-            options: fq.options.map((o) => ({ key: o.key, text: o.text })),
-            input_hint: '',
-            expected_signal: `确认${fq.dimension}倾向`,
-          }));
+          console.warn('LLM返回格式异常，使用备用题目');
+          questions = fallbackQuestions;
         }
         store.setDynamicQuestions(questions.slice(0, 5));
-        setLoading(false);
-        loadingRef.current = false;
       })
       .catch((err) => {
-        store.addError(err.message);
+        console.warn('动态题请求失败，使用备用题目:', err);
+        store.setDynamicQuestions(fallbackQuestions);
+      })
+      .finally(() => {
         setLoading(false);
         loadingRef.current = false;
       });
@@ -257,11 +263,30 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Main Layout: Side panels + 3D + Question area */}
+      {/* Main Layout: responsive grid — desktop 3-col, mobile single-col scroll */}
       {(store.phase === 'fixed' || store.phase === 'dynamic' || store.phase === 'open') && (
-        <div className="p-4 grid grid-cols-12 gap-4 max-w-[1400px] mx-auto" style={{ height: 'calc(100vh - 53px)' }}>
-          {/* Left: Progress */}
-          <div className="col-span-2 flex flex-col gap-3">
+        <div className="p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 max-w-[1400px] mx-auto lg:h-[calc(100vh-53px)] overflow-y-auto lg:overflow-hidden">
+          {/* Left: Progress — hidden on mobile unless expanded */}
+          <div className="hidden lg:block lg:col-span-2">
+            <div className="flex flex-col gap-3">
+              <ProgressPanel
+                phase={store.phase}
+                currentQuestion={
+                  store.phase === 'fixed' ? store.fixedIndex :
+                  store.phase === 'dynamic' ? store.dynamicIndex :
+                  store.openIndex
+                }
+                totalQuestions={
+                  store.phase === 'fixed' ? FIXED_QUESTIONS.length :
+                  store.phase === 'dynamic' ? store.dynamicQuestions.length :
+                  OPEN_QUESTIONS.length
+                }
+              />
+            </div>
+          </div>
+
+          {/* Mobile progress bar (compact) */}
+          <div className="lg:hidden">
             <ProgressPanel
               phase={store.phase}
               currentQuestion={
@@ -278,15 +303,15 @@ const App: React.FC = () => {
           </div>
 
           {/* Center: 3D + Question */}
-          <div className="col-span-7 flex flex-col gap-3">
-            <div className="flex-1 min-h-0">
+          <div className="lg:col-span-7 flex flex-col gap-3">
+            <div className="h-48 sm:h-64 lg:flex-1 lg:min-h-0">
               <MajorUniverse
                 majors={store.matchedMajors}
                 profileKeywords={[]}
                 onMajorClick={(m) => setSelectedMajor(m)}
               />
             </div>
-            <div className="max-h-[45%] overflow-y-auto">
+            <div className="lg:max-h-[45%] overflow-y-auto">
               {store.phase === 'fixed' && FIXED_QUESTIONS[store.fixedIndex] && (
                 <FixedQuestionCard
                   question={FIXED_QUESTIONS[store.fixedIndex]}
@@ -316,8 +341,8 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Profile */}
-          <div className="col-span-3">
+          {/* Right: Profile — below on mobile */}
+          <div className="lg:col-span-3">
             <ProfilePanel profile={store.profile} />
             {selectedMajor && (
               <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10 text-xs space-y-1">

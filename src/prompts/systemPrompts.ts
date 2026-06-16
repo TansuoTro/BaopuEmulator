@@ -76,12 +76,13 @@ export function buildDynamicPrompt(
 ): string {
   return JSON.stringify({
     task: 'generate_dynamic_questions',
-    instruction: '根据用户画像和已测信息，生成5道最有区分度的选择题，每道题只打一个主要分歧点',
+    instruction: '根据用户画像和已测信息，生成5道最有区分度的选择题。每道题只打一个主要分歧点。由于使用了json_object模式，你必须将题目列表放在一个对象内返回。',
     user_profile: profile,
     conflicts: conflicts.map((c) => ({ dimension: c.dimension, reason: c.reason, severity: c.severity })),
     previously_asked_topics: history,
     required_count: 5,
-    output_format: '返回包含5个question对象的JSON数组，type一律为question',
+    output_format: '必须返回如下格式: {"questions": [{"type":"question","question_id":"D01","question_type":"choice","dimension":"ability","sub_dimension":"math","difficulty":3,"stem":"题干","options":[{"key":"A","text":"选项A"},{"key":"B","text":"选项B"},{"key":"C","text":"选项C"},{"key":"D","text":"选项D"}],"input_hint":"","expected_signal":"区分数学倾向","stop_condition":""}]}',
+    important: '必须返回一个JSON对象，其中questions字段是一个包含5个question对象的数组。不要返回顶层数组！',
   });
 }
 

@@ -20,7 +20,12 @@
 
 body {
   margin: 0;
-  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  body {
+    overflow: hidden;
+  }
 }
 
 canvas {

@@ -8,9 +8,21 @@ function cleanJson(raw: string): string {
   else if (c.startsWith('```')) c = c.slice(3);
   if (c.endsWith('```')) c = c.slice(0, -3);
   c = c.trim();
-  const a = c.indexOf('{');
-  const b = c.lastIndexOf('}');
-  if (a !== -1 && b !== -1 && b > a) c = c.slice(a, b + 1);
+
+  const firstBrace = c.indexOf('{');
+  const lastBrace = c.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    c = c.slice(firstBrace, lastBrace + 1);
+    return c;
+  }
+
+  const firstBracket = c.indexOf('[');
+  const lastBracket = c.lastIndexOf(']');
+  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    c = c.slice(firstBracket, lastBracket + 1);
+    return c;
+  }
+
   return c;
 }
 
