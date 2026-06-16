@@ -90,6 +90,34 @@ button.option-btn:hover {
 }
 .shimmer { background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.05) 50%,transparent 100%); background-size:200% 100%; animation:shimmer 2s infinite; }
 
+/* ── Question slide transitions ── */
+@keyframes slideInRight {
+  0% { opacity:0; transform:translateX(30px); }
+  100% { opacity:1; transform:translateX(0); }
+}
+@keyframes slideInLeft {
+  0% { opacity:0; transform:translateX(-30px); }
+  100% { opacity:1; transform:translateX(0); }
+}
+.question-enter { animation:slideInRight 0.35s ease-out; }
+.question-enter-back { animation:slideInLeft 0.35s ease-out; }
+
+/* ── Button press scale ── */
+button:active { transform:scale(0.97) !important; transition:transform 0.1s !important; }
+button { transition:all 0.2s ease; }
+
+/* ── Option hover glow ── */
+button.option-hover:hover {
+  transform:translateX(6px);
+  box-shadow:0 0 24px rgba(99,102,241,0.25);
+  border-color:rgba(129,140,248,0.5);
+}
+
+/* ── Bar fill smooth transition ── */
+.bar-fill {
+  transition:width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* ── Layout ── */
 @media(min-width:1024px){ body{overflow:hidden;} }
 .assessment-shell { display:flex; flex-direction:column; gap:12px; padding:12px; }

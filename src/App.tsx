@@ -380,8 +380,9 @@ const App: React.FC = () => {
   const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
+    <>
       <AnimeBackground />
+      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/80 text-white' : 'bg-zinc-50/80 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
@@ -575,6 +576,7 @@ const App: React.FC = () => {
 
       <Particles />
     </div>
+    </>
   );
 };
 
