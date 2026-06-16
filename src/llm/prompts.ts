@@ -46,7 +46,8 @@ export function buildDynamicPrompt(profile: UserProfile, conflicts: { type: stri
     conflicts,
     previously_tested: history,
     required_count: 5,
-    output_format: '{"questions":[{"type":"question","question_id":"D01","question_type":"choice","target_discrimination":["dimA","dimB"],"stem":"题干","options":[{"key":"A","text":"选项A"},{"key":"B","text":"选项B"},{"key":"C","text":"选项C"},{"key":"D","text":"选项D"}],"expected_signal":"区分X维度"}]}',
+    output_format: '{"questions":[{"type":"question","question_id":"D01","question_type":"choice","target_discrimination":["math","logic"],"stem":"...","options":[{"key":"A","text":"..."}],"option_scores":{"A":{"math":75,"logic":70},"B":{"math":55,"logic":50},"C":{"math":35,"logic":30},"D":{"math":15,"logic":10}},"expected_signal":"区分数学能力"}]}',
+    important: '每个选项必须附带option_scores字段，映射到target_discrimination中的维度，分值0~100。option_scores用于评分回退。',
   });
 }
 

@@ -180,6 +180,7 @@ const App: React.FC = () => {
   const [tookGaokao, setTookGaokao] = useState<boolean | null>(null);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const loadingRef = useRef(false);
+  const submittingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
   const isDark = theme === 'dark';
@@ -207,17 +208,62 @@ const App: React.FC = () => {
       .finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.dynamicQuestions.length, store.apiKey, profile]);
 
+  /* ── Code fallback helpers ── */
+  function applyOptionScores(p: UserProfile, q: DynamicQuestion, answerKey: string) {
+    const scores = q.option_scores?.[answerKey];
+    if (!scores) { const delta = answerKey === q.options[q.options.length-1]?.key ? 8 : -4; store.updateProfileDynamic(q.target_discrimination[0] as keyof UserProfile, delta); return; }
+    const fresh = { ...p };
+    for (const [dim, val] of Object.entries(scores)) {
+      const key = dim as keyof UserProfile;
+      if (key in fresh) {
+        const delta = Math.round((val - (fresh[key]??50)) * 0.3);
+        (fresh as Record<string,number>)[key] = Math.min(100, Math.max(0, (fresh[key]??50) + delta));
+      }
+    }
+    useAssessmentStore.setState({ profile: fresh });
+  }
+
+  function fallbackScenarioScore(p: UserProfile, answer: string) {
+    const len = answer.length;
+    if (len < 15) return;
+    const delta = Math.min(8, Math.round(len / 20));
+    const dims: (keyof UserProfile)[] = ['decision_confidence','emotion_stability','social'];
+    const fresh = { ...p };
+    for (const d of dims) (fresh as Record<string,number>)[d] = Math.min(100, (fresh[d]??50) + delta);
+    if (/沟通|商量|说|谈/.test(answer)) fresh.social = Math.min(100, (fresh.social??50) + 4);
+    if (/规则|规定|应该|必须/.test(answer)) fresh.rule_compliance = Math.min(100, (fresh.rule_compliance??50) + 3);
+    if (/分析|逻辑|原因|因为/.test(answer)) fresh.critical_thinking = Math.min(100, (fresh.critical_thinking??50) + 3);
+    useAssessmentStore.setState({ profile: fresh });
+  }
+
+  function fallbackOpenTags(answer: string): string[] {
+    const tags: string[] = [];
+    if (answer.length < 15) return tags;
+    if (/一方面.*另一方面|既.*又|权衡|利弊/.test(answer)) tags.push('tradeoff_analysis');
+    if (/如果.*那么|假如|假设|条件/.test(answer)) tags.push('conditional_reasoning');
+    if (/多个.*原因|因素|角度|层面/.test(answer)) tags.push('multi_factor');
+    if (/不一定是|不一定对|反例|例外/.test(answer)) tags.push('counterexample_awareness');
+    if (/恶心|为什么.*吃/.test(answer) && /进化|文化|心理|生物/.test(answer)) tags.push('abstraction_tolerance');
+    if (/拆解|分解|步骤|首先.*然后/.test(answer)) tags.push('problem_decomposition');
+    if (/归纳|总结|规律|例子/.test(answer)) tags.push('inductive_preference');
+    if (/推导|推理|演绎|公式/.test(answer)) tags.push('deductive_preference');
+    if (tags.length === 0) tags.push('multi_factor');
+    return tags.slice(0, 5);
+  }
+
   const handleDynamicAnswer = async (a: string) => {
-    const q = store.dynamicQuestions[store.dynamicIndex]; if (!q) return;
+    const q = store.dynamicQuestions[store.dynamicIndex]; if (!q || submittingRef.current) return;
+    submittingRef.current = true;
     try {
       const r = await ds(store.apiKey, buildScorePrompt(profile, q.stem, a, q.target_discrimination));
       logLLM('score-dynamic','ok');
       const d = r as { updated_profile?: Record<string, number> };
       const fresh = useAssessmentStore.getState().profile;
       if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
-      else { const delta = a === q.options[q.options.length - 1]?.key ? 8 : -4; store.updateProfileDynamic(q.target_discrimination[0] as keyof UserProfile, delta); }
+      else { applyOptionScores(fresh, q, a); }
       store.answerDynamic(a);
-    } catch (e) { logLLM('score-dynamic','fail',(e as Error).message); store.addError((e as Error).message); store.answerDynamic(a); }
+    } catch (e) { logLLM('score-dynamic','fail',(e as Error).message); applyOptionScores(useAssessmentStore.getState().profile, q, a); store.answerDynamic(a); }
+    finally { submittingRef.current = false; }
   };
 
   const handleOpenAnswer = async (a: string) => {
@@ -234,7 +280,7 @@ const App: React.FC = () => {
       }
       setFollowupHint('');
       store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a);
-    } catch { if (!isFollowup) store.answerOpen(a); }
+    } catch { const tags = fallbackOpenTags(a); store.applyOpenResult({ tags }); if (!isFollowup) store.answerOpen(a); }
     finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
   };
 
@@ -258,8 +304,9 @@ const App: React.FC = () => {
   }, [phase, store.scenarioQuestions.length, store.apiKey, profile]);
 
   const handleScenarioAnswer = async (a: string) => {
-    const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return;
+    const q = store.scenarioQuestions[store.scenarioIndex]; if (!q || submittingRef.current) return;
     let isFollowup = false;
+    submittingRef.current = true;
     try {
       const r = await ds(store.apiKey, buildScenarioScorePrompt(profile, q.stem, a));
       logLLM('score-scenario', 'ok');
@@ -273,7 +320,7 @@ const App: React.FC = () => {
       setFollowupHint('');
       if (d.updated_profile) { const fresh = useAssessmentStore.getState().profile; const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
-    } catch (e) { if (!isFollowup) store.answerScenario(a); }
+    } catch (e) { fallbackScenarioScore(useAssessmentStore.getState().profile, a); if (!isFollowup) store.answerScenario(a); }
     finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
   };
 

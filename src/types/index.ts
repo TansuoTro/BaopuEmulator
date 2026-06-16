@@ -74,6 +74,7 @@ export interface DynamicQuestion {
   options: { key: string; text: string }[];
   input_hint: string;
   expected_signal: string;
+  option_scores?: Record<string, Record<string, number>>;
 }
 
 export interface OpenQuestion {
@@ -184,7 +185,7 @@ export function getSubjectMax(province: string, subject: string, gaokaoType: str
   return 100;
 }
 
-export const GAOKAO_YEARS = Array.from({length:26},(_,i)=>2025-i);
+export const GAOKAO_YEARS = Array.from({length:27},(_,i)=>2026-i);
 
 export const NEW_GAOKAO_SUBJECTS = ['物理','化学','生物','历史','政治','地理','技术'];
 
