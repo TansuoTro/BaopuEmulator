@@ -139,6 +139,7 @@ export interface RecommendationResult {
   conflicts: ProfileConflict[];
   keywords: string[];
   personality_sketch: string;
+  future_paths: Record<string, string>;
   final_note: string;
   score_logs: ScoreLog[];
 }
