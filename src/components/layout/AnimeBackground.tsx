@@ -33,7 +33,7 @@ const AnimeBackground = () => {
           alt=""
         />
       )}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
     </div>
   );
 };

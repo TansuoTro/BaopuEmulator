@@ -382,7 +382,7 @@ const App: React.FC = () => {
   return (
     <>
       <AnimeBackground />
-      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/80 text-white' : 'bg-zinc-50/80 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
+      <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/60 text-white' : 'bg-zinc-50/70 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-xl ${isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
@@ -445,7 +445,7 @@ const App: React.FC = () => {
       {tookGaokao === true && inAssess && (
         <div className={`assessment-shell ${isDark ? '' : 'assessment-shell-light'}`}>
           <div className="hidden lg:block left-col">
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100/80 border-zinc-200'}`}>
+            <div className={`p-4 rounded-xl border glass ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/40 border-zinc-200'}`}>
               <h3 className="text-xs font-bold mb-3">{phase === 'fixed' ? '阶段一：基础画像' : phase === 'dynamic' ? '阶段二：深度消歧' : phase === 'scenario' ? '阶段三：情景决断' : '阶段四：动机补足'}</h3>
               <div className="h-1.5 bg-white/10 rounded-full mb-3"><div className="h-full bg-indigo-500 rounded-full" style={{ width: `${totalQ ? Math.round(curQ / totalQ * 100) : 0}%` }} /></div>
               <div className="text-xs text-white/30">{curQ}/{totalQ} 题</div>
@@ -493,7 +493,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="hidden lg:block right-col">
-            <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100/80 border-zinc-200'}`}>
+            <div className={`p-4 rounded-xl border glass space-y-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/40 border-zinc-200'}`}>
               <h3 className="text-xs font-bold text-white/60 flex items-center gap-2"><i className="fas fa-chart-simple" /> 即时画像</h3>
               <ProfileBars p={profile} />
             </div>

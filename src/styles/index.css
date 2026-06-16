@@ -102,7 +102,15 @@ button.option-btn:hover {
 .question-enter { animation:slideInRight 0.35s ease-out; }
 .question-enter-back { animation:slideInLeft 0.35s ease-out; }
 
-/* ── Button press scale ── */
+/* ── Glass panel ── */
+.glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.glass-light {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
 button:active { transform:scale(0.97) !important; transition:transform 0.1s !important; }
 button { transition:all 0.2s ease; }
 
