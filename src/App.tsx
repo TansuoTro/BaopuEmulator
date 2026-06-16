@@ -205,7 +205,7 @@ const App: React.FC = () => {
   }, [phase, store.dynamicQuestions.length, store.apiKey, profile]);
 
   const handleDynamicAnswer = async (a: string) => {
-    const q = store.dynamicQuestions[store.dynamicIndex]; if (!q) return; setLoading(true);
+    const q = store.dynamicQuestions[store.dynamicIndex]; if (!q) return;
     try {
       const r = await ds(store.apiKey, buildScorePrompt(profile, q.stem, a, q.target_discrimination));
       logLLM('score-dynamic','ok');
@@ -214,13 +214,13 @@ const App: React.FC = () => {
       if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       else { const delta = a === q.options[q.options.length - 1]?.key ? 8 : -4; store.updateProfileDynamic(q.target_discrimination[0] as keyof UserProfile, delta); }
       store.answerDynamic(a);
-    } catch (e) { logLLM('score-dynamic','fail',(e as Error).message); store.addError((e as Error).message); store.answerDynamic(a); } finally { setLoading(false); }
+    } catch (e) { logLLM('score-dynamic','fail',(e as Error).message); store.addError((e as Error).message); store.answerDynamic(a); }
   };
 
   const handleOpenAnswer = async (a: string) => {
-    const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return; setLoading(true);
+    const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return;
     try { const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a)); store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a); }
-    catch { store.answerOpen(a); } finally { if(openRef.current) openRef.current.value = ''; setLoading(false); }
+    catch { store.answerOpen(a); } finally { if(openRef.current) openRef.current.value = ''; }
   };
 
   /* Scenario phase: fetch 4 scenario questions */
@@ -243,14 +243,14 @@ const App: React.FC = () => {
   }, [phase, store.scenarioQuestions.length, store.apiKey, profile]);
 
   const handleScenarioAnswer = async (a: string) => {
-    const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return; setLoading(true);
+    const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return;
     try {
       const r = await ds(store.apiKey, buildScenarioScorePrompt(profile, q.stem, a));
       const d = r as { updated_profile?: Record<string, number> };
       const fresh = useAssessmentStore.getState().profile;
       if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
-    } catch (e) { store.answerScenario(a); } finally { if(openRef.current) openRef.current.value = ''; setLoading(false); }
+    } catch (e) { store.answerScenario(a); } finally { if(openRef.current) openRef.current.value = ''; }
   };
 
   /* Recommend phase */
@@ -318,7 +318,7 @@ const App: React.FC = () => {
   const curDynamic = store.dynamicQuestions[store.dynamicIndex] || null;
   const curScenario = store.scenarioQuestions[store.scenarioIndex] || null;
   const inAssess = phase === 'fixed' || phase === 'dynamic' || phase === 'scenario' || phase === 'open';
-  const totalQ = phase === 'fixed' ? FIXED_QUESTIONS.length : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'scenario' ? store.scenarioQuestions.length || 4 : phase === 'open' ? 3 : 0;
+  const totalQ = phase === 'fixed' ? FIXED_QUESTIONS.length : phase === 'dynamic' ? store.dynamicQuestions.length || 5 : phase === 'scenario' ? store.scenarioQuestions.length || 4 : OPEN_QUESTIONS.length;
   const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
@@ -384,15 +384,15 @@ const App: React.FC = () => {
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-rose-500/20' : 'bg-white border-rose-200 shadow-sm'}`}>
                   <div className="flex items-center justify-between text-xs"><span className="text-rose-400">情景 {store.scenarioIndex + 1}/{store.scenarioQuestions.length}</span>{store.scenarioIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90 leading-relaxed">{curScenario.stem}</p>
-                  <textarea ref={openRef} rows={4} placeholder={curScenario.input_hint || '请描述你的做法和理由...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
+                  <textarea ref={openRef} key={`s${store.scenarioIndex}`} rows={4} placeholder={curScenario.input_hint || '请描述你的做法和理由...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleScenarioAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交回答</button>
                 </div>
               )}
               {phase === 'open' && OPEN_QUESTIONS[store.openIndex] && (
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-emerald-500/20' : 'bg-white border-emerald-200 shadow-sm'}`}>
-                  <div className="flex items-center justify-between text-xs"><span className="text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/3</span>{store.openIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/{OPEN_QUESTIONS.length}</span>{store.openIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90">{OPEN_QUESTIONS[store.openIndex].stem}</p>
-                  <textarea ref={openRef} rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
+                  <textarea ref={openRef} key={`o${store.openIndex}`} rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleOpenAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交</button>
                 </div>
               )}
