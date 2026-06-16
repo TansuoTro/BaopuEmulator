@@ -384,7 +384,7 @@ const App: React.FC = () => {
       <AnimeBackground />
       <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816]/80 text-white' : 'bg-zinc-50/80 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
-      <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
+      <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-xl ${isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-zinc-200'}`}>
         <div className="flex items-center gap-3">
           <button onClick={() => { if (phase !== 'idle' && tookGaokao) setShowRestartConfirm(true); else handleRestart(); }} className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer" title="点击返回首页">
             <i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator</span>

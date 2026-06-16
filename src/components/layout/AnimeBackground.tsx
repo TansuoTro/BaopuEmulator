@@ -3,34 +3,37 @@ import { useEffect, useState } from 'react';
 const API = 'https://t.alcy.cc/moez';
 
 const AnimeBackground = () => {
-  const [img, setImg] = useState('');
-  const [next, setNext] = useState('');
-  const [fade, setFade] = useState(false);
+  const [current, setCurrent] = useState('');
+  const [nextUrl, setNextUrl] = useState('');
+  const [fadeOut, setFadeOut] = useState(false);
 
-  const load = () => {
-    const suffix = '?t=' + Date.now();
-    setNext(API + suffix);
-  };
+  const fetchNew = () => setNextUrl(API + '?t=' + Date.now());
 
-  useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, []);
+  useEffect(() => { fetchNew(); const t = setInterval(fetchNew, 8000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
-    if (!next) return;
-    const i = new Image();
-    i.onload = () => { setFade(true); setTimeout(() => { setImg(next); setFade(false); }, 600); };
-    i.src = next;
-    i.crossOrigin = 'anonymous';
-  }, [next]);
+    if (!nextUrl) return;
+    const img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    img.onload = () => {
+      setFadeOut(true);
+      setTimeout(() => { setCurrent(nextUrl); setFadeOut(false); }, 800);
+    };
+    img.onerror = () => { fetchNew(); };
+    img.src = nextUrl;
+  }, [nextUrl]);
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-      {img && (
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-[2000ms]"
-          style={{ backgroundImage: `url(${img})`, opacity: fade ? 0 : 1 }}
+      {current && (
+        <img
+          src={current}
+          referrerPolicy="no-referrer"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+          alt=""
         />
       )}
-      <div className="absolute inset-0 bg-black/75" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
     </div>
   );
 };
