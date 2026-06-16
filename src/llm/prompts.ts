@@ -51,11 +51,9 @@ export function buildScenarioPrompt(profile: UserProfile, history: string[], gao
 export function buildScenarioScorePrompt(profile: UserProfile, stem: string, answer: string): string {
   return JSON.stringify({
     task: 'score_scenario_answer',
-    current_profile: profile,
-    scenario_stem: stem,
-    user_answer: answer,
-    instruction: '分析用户在复杂情景中的反应，更新以下人格维度的分数(0~100)：social(社交倾向)、emotion_stability(情绪稳定性)、decision_confidence(决策果断度)、pressure_tolerance(抗压能力)、rule_compliance(规则意识)、critical_thinking(批判思维)、independent_vs_team(独立vs协作)。只返回受影响的维度，不要动其他维度。返回updated_profile。',
-    output_format: '{"type":"score","updated_profile":{"social":65,"emotion_stability":70,"decision_confidence":55},"analysis":"一句话分析"}',
+    current_profile: profile, scenario_stem: stem, user_answer: answer,
+    instruction: `判断回答质量。太短(<15字)或太笼统("看情况""随便")→needs_followup=true+引导追问(如"能具体说说第一步怎么做吗？")。足够详细→updated_profile(0~100,只改social/emotion_stability/decision_confidence/pressure_tolerance/rule_compliance/critical_thinking/independent_vs_team)+analysis。`,
+    output_format: '不足:{"type":"score","needs_followup":true,"followup_prompt":"追问"} 足够:{"type":"score","needs_followup":false,"updated_profile":{"social":65},"analysis":"分析"}',
   });
 }
 
@@ -85,11 +83,9 @@ export function buildScorePrompt(profile: UserProfile, stem: string, answer: str
 
 export function buildOpenTagsPrompt(stem: string, answer: string): string {
   return JSON.stringify({
-    task: 'extract_tags',
-    question: stem,
-    answer,
-    instruction: '从回答中提取3~5个描述性标签，如"independent_study""project_based""high_intrinsic""research_interest""practical_orientation""leadership""quiet_independent""active_collaborative""plan_and_execute""seek_help"',
-    output_format: '{"tags":["tag1","tag2","tag3"]}',
+    task: 'extract_tags', question: stem, answer,
+    instruction: `判断回答质量。太短(<15字)→needs_followup=true+追问。足够→提取3~5个思维结构标签:multi_factor/conditional_reasoning/tradeoff_analysis/counterexample_awareness/concept_boundary/abstraction_tolerance/problem_decomposition/deductive_preference/inductive_preference/independent_study/project_based/quiet_independent/research_interest。不评价观点。`,
+    output_format: '不足:{"type":"extract_tags","needs_followup":true,"followup_prompt":"追问"} 足够:{"type":"extract_tags","needs_followup":false,"tags":["multi_factor"]}',
   });
 }
 

@@ -176,6 +176,7 @@ const App: React.FC = () => {
   const store = useAssessmentStore();
   const [loading, setLoading] = useState(false);
   const [selectedMajor, setSelectedMajor] = useState<MajorNode | null>(null);
+  const [followupHint, setFollowupHint] = useState('');
   const loadingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
@@ -219,8 +220,20 @@ const App: React.FC = () => {
 
   const handleOpenAnswer = async (a: string) => {
     const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return;
-    try { const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a)); store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a); }
-    catch { store.answerOpen(a); } finally { if(openRef.current) openRef.current.value = ''; }
+    let isFollowup = false;
+    try {
+      const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a));
+      const d = r as { needs_followup?: boolean; followup_prompt?: string; tags?: string[] };
+      if (d.needs_followup) {
+        isFollowup = true;
+        setFollowupHint(d.followup_prompt || '请再详细展开一下你的想法，可以从不同角度来回答。');
+        if(openRef.current) openRef.current.value = '';
+        return;
+      }
+      setFollowupHint('');
+      store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a);
+    } catch { if (!isFollowup) store.answerOpen(a); }
+    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
   };
 
   /* Scenario phase: fetch 4 scenario questions */
@@ -244,13 +257,22 @@ const App: React.FC = () => {
 
   const handleScenarioAnswer = async (a: string) => {
     const q = store.scenarioQuestions[store.scenarioIndex]; if (!q) return;
+    let isFollowup = false;
     try {
       const r = await ds(store.apiKey, buildScenarioScorePrompt(profile, q.stem, a));
-      const d = r as { updated_profile?: Record<string, number> };
-      const fresh = useAssessmentStore.getState().profile;
-      if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
+      logLLM('score-scenario', 'ok');
+      const d = r as { needs_followup?: boolean; followup_prompt?: string; updated_profile?: Record<string, number> };
+      if (d.needs_followup) {
+        isFollowup = true;
+        setFollowupHint(d.followup_prompt || '请再详细描述一下你的想法，说说为什么你会这样选择？');
+        if(openRef.current) openRef.current.value = '';
+        return;
+      }
+      setFollowupHint('');
+      if (d.updated_profile) { const fresh = useAssessmentStore.getState().profile; const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
-    } catch (e) { store.answerScenario(a); } finally { if(openRef.current) openRef.current.value = ''; }
+    } catch (e) { if (!isFollowup) store.answerScenario(a); }
+    finally { if (!isFollowup && openRef.current) openRef.current.value = ''; }
   };
 
   /* Recommend phase */
@@ -384,6 +406,7 @@ const App: React.FC = () => {
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-rose-500/20' : 'bg-white border-rose-200 shadow-sm'}`}>
                   <div className="flex items-center justify-between text-xs"><span className="text-rose-400">情景 {store.scenarioIndex + 1}/{store.scenarioQuestions.length}</span>{store.scenarioIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90 leading-relaxed">{curScenario.stem}</p>
+                  {followupHint && <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300"><i className="fas fa-arrow-turn-down mr-1"/> {followupHint}</div>}
                   <textarea ref={openRef} key={`s${store.scenarioIndex}`} rows={4} placeholder={curScenario.input_hint || '请描述你的做法和理由...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleScenarioAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交回答</button>
                 </div>
@@ -392,6 +415,7 @@ const App: React.FC = () => {
                 <div className={`p-4 rounded-xl border space-y-4 ${isDark ? 'bg-white/5 border-emerald-500/20' : 'bg-white border-emerald-200 shadow-sm'}`}>
                   <div className="flex items-center justify-between text-xs"><span className="text-emerald-400">{OPEN_QUESTIONS[store.openIndex].category} · {store.openIndex + 1}/{OPEN_QUESTIONS.length}</span>{store.openIndex > 0 && <button onClick={store.goBack} className="text-indigo-400 hover:text-indigo-300"><i className="fas fa-arrow-left mr-1"/>返回</button>}</div>
                   <p className="text-white/90">{OPEN_QUESTIONS[store.openIndex].stem}</p>
+                  {followupHint && <div className="p-3 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300"><i className="fas fa-arrow-turn-down mr-1"/> {followupHint}</div>}
                   <textarea ref={openRef} key={`o${store.openIndex}`} rows={3} placeholder={OPEN_QUESTIONS[store.openIndex].input_hint || '自由回答...'} className="w-full p-3 rounded bg-white/5 border border-white/10 text-white text-sm resize-none" />
                   <button onClick={() => { const el = openRef.current; if (el?.value.trim()) handleOpenAnswer(el.value.trim()); }} disabled={loading} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm disabled:opacity-30 transition-all">提交</button>
                 </div>
