@@ -85,15 +85,29 @@ button.option-btn:hover {
 @media(min-width:1024px){ .question-area { max-height:42%; overflow-y:auto; flex-shrink:0; } }
 @media(min-width:1024px){ .left-col,.right-col { overflow-y:auto; } }
 
-/* Light mode select overrides */
-.assessment-shell-light select,
-.assessment-shell-light select option { color-scheme:light; background:#f4f4f5; color:#18181b; }
-.assessment-shell-light .bg-white\/5 { background:rgba(0,0,0,0.03); }
-.assessment-shell-light .border-white\/10 { border-color:rgba(0,0,0,0.08); }
-.assessment-shell-light .text-white\/90,
-.assessment-shell-light .text-white\/80,
-.assessment-shell-light .text-white\/70,
-.assessment-shell-light .text-white\/60 { color:rgba(0,0,0,0.85); }
-.assessment-shell-light .text-white\/50 { color:rgba(0,0,0,0.6); }
-.assessment-shell-light .text-white\/40 { color:rgba(0,0,0,0.5); }
-.assessment-shell-light .text-white\/30 { color:rgba(0,0,0,0.35); }
+/* ── Global light mode overrides ── */
+[data-theme="light"] .text-white\/90,
+[data-theme="light"] .text-white\/80,
+[data-theme="light"] .text-white\/70,
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/50,
+[data-theme="light"] .text-white\/40,
+[data-theme="light"] .text-white\/30,
+[data-theme="light"] .text-white\/20 { color: #3f3f46 !important; }
+[data-theme="light"] .text-white { color: #18181b !important; }
+[data-theme="light"] .text-secondary { color: #52525b !important; }
+
+[data-theme="light"] .bg-white\/5 { background: rgba(0,0,0,0.03) !important; }
+[data-theme="light"] .bg-white\/10 { background: rgba(0,0,0,0.06) !important; }
+[data-theme="light"] .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .border-white\/20 { border-color: rgba(0,0,0,0.12) !important; }
+[data-theme="light"] .border-white\/5 { border-color: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .bg-black\/20 { background: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .bg-black\/30 { background: rgba(0,0,0,0.06) !important; }
+
+[data-theme="light"] select,
+[data-theme="light"] select option {
+  color-scheme: light;
+  background: #f4f4f5;
+  color: #18181b;
+}

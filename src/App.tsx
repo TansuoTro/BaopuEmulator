@@ -6,15 +6,15 @@ import { matchMajors, computeConfidence, detectConflicts } from './engine/scorer
 import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, PROVINCE_MAX_SCORE, GAOKAO_YEARS } from './types';
 import { logLLM, logFallback, logPhase, log } from './utils/logger';
 import { useClickParticles } from './utils/particles';
-
-// Startup
-log('info', 'App', 'BaopuEmulator V3.3 启动', { majors: 44, questions: 18, phases: 'idle→gaokao→fixed→dynamic→scenario→open→recommend' });
 import UniverseScene from './components/3d/UniverseScene';
 import PersonalityAxes from './components/results/PersonalityAxes';
 import html2canvas from 'html2canvas';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
-const API = 'https://api.deepseek.com/v1/chat/completions';
+log('info','App','BaopuEmulator V4 启动',{majors:44,questions:18,backend:'Netlify proxy'});
+
+/* ── API through Netlify proxy ── */
+const API = '/.netlify/functions/api-proxy';
 
 function cleanJson(raw: string): string {
   let c = raw.trim();
@@ -23,13 +23,14 @@ function cleanJson(raw: string): string {
   for (const ch of ['{','[']) { const a=c.indexOf(ch), b=c.lastIndexOf(ch==='{'?'}':']'); if(a!==-1&&b!==-1&&b>a){c=c.slice(a,b+1);break;} }
   return c;
 }
-async function ds(apiKey: string, prompt: string): Promise<unknown> {
-  const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${apiKey}`}, body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],temperature:0.7,max_tokens:4096,response_format:{type:'json_object'}}) });
-  if(!res.ok){const t=await res.text();throw new Error(`API ${res.status}: ${t.slice(0,200)}`);}
-  const d=await res.json();const raw=d.choices?.[0]?.message?.content;if(!raw)throw new Error('Empty');
-  return JSON.parse(cleanJson(raw));
-}
 
+async function ds(_apiKey: string, prompt: string): Promise<unknown> {
+  const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt, system_prompt: SYSTEM_PROMPT }) });
+  if(!res.ok){const t=await res.text();throw new Error(`API ${res.status}: ${t.slice(0,200)}`);}
+  const d=await res.json();
+  if(!d.content)throw new Error('Empty proxy response');
+  return JSON.parse(cleanJson(d.content));
+}
 /* ── Extracted GaokaoForm component (no hooks-in-conditionals) ── */
 const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onSubmit }) => {
   const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'不清楚' });
@@ -157,7 +158,6 @@ function defaultScenarios(): DynamicQuestion[] {
 
 const App: React.FC = () => {
   const store = useAssessmentStore();
-  const [apiInput, setApiInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedMajor, setSelectedMajor] = useState<MajorNode | null>(null);
   const loadingRef = useRef(false);
@@ -253,7 +253,7 @@ const App: React.FC = () => {
     }).catch(e => { logLLM('recommend','fail',(e as Error).message); store.finalizeRecommendation({ final_note: '基于代码侧匹配结果（LLM推荐生成失败）' }); }).finally(() => { setLoading(false); loadingRef.current = false; });
   }, [phase, store.recommendation, store.apiKey, store.fixedIndex, store.dynamicIndex, store.gaokaoInfo, store.openAnswers, store.scenarioAnswers]);
 
-  const handleStart = () => { if (!apiInput.trim()) return; store.setApiKey(apiInput.trim()); logPhase('idle','gaokao'); store.startAssessment(); };
+  const handleStart = () => { store.setApiKey('netlify-proxy'); logPhase('idle','gaokao'); store.startAssessment(); };
 
   const handleExport = async () => {
     const el = document.getElementById('recommend-root');
@@ -293,7 +293,7 @@ const App: React.FC = () => {
   const curQ = phase === 'fixed' ? store.fixedIndex : phase === 'dynamic' ? store.dynamicIndex : phase === 'scenario' ? store.scenarioIndex : phase === 'open' ? store.openIndex : 0;
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} onClick={spawn}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
         <div className="flex items-center gap-3"><i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator V3</span></div>
@@ -310,11 +310,9 @@ const App: React.FC = () => {
           <p className="text-white/40 mt-2">AI本科专业宇宙</p>
           <p className="text-white/30 text-sm mt-4 leading-relaxed">高考数据→18题画像→5题消歧→3题动机→专业宇宙</p>
           <div className="mt-8 space-y-4 text-left">
-            <label className="block text-sm text-white/60 flex items-center gap-2"><i className="fas fa-key text-indigo-400" /> DeepSeek API Key</label>
-            <input type="password" value={apiInput} onChange={e => setApiInput(e.target.value)} placeholder="sk-..." className={`w-full px-4 py-3 rounded-lg font-mono text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-white/20' : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'}`} />
-            <label className="block text-sm text-white/60 flex items-center gap-2"><i className="fas fa-user text-indigo-400" /> 你的昵称（选填）</label>
-            <input type="text" value={store.nickname} onChange={e => store.setNickname(e.target.value)} placeholder="输入昵称，将出现在导出报告上..." className={`w-full px-4 py-3 rounded-lg text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-white/20' : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'}`} />
-            <button onClick={handleStart} disabled={!apiInput.trim()} className="w-full py-3.5 rounded-lg font-bold bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-30 transition-all">🌌 进入专业宇宙</button>
+            <label className="block text-sm text-white/60 flex items-center gap-2"><i className="fas fa-user text-indigo-400" /> 你的昵称（选填，将出现在导出报告上）</label>
+            <input type="text" value={store.nickname} onChange={e => store.setNickname(e.target.value)} placeholder="输入昵称..." className={`w-full px-4 py-3 rounded-lg text-sm ${isDark ? 'bg-white/5 border border-white/10 text-white placeholder-white/20' : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'}`} />
+            <button onClick={handleStart} className="w-full py-3.5 rounded-lg font-bold bg-indigo-500 hover:bg-indigo-600 text-white transition-all">🌌 进入专业宇宙</button>
           </div>
         </div>
       )}

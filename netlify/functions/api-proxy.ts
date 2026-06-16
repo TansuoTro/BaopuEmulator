@@ -72,21 +72,19 @@ export const handler: Handler = async (event) => {
 
   const start = Date.now();
   try {
-    const { api_key, prompt, system_prompt } = JSON.parse(event.body || '{}');
-    if (!api_key) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing api_key' }) };
+    const { prompt, system_prompt } = JSON.parse(event.body || '{}');
+    const apiKey = process.env.DeepSeekAPI;
+    if (!apiKey) {
+      log('error', 'No DeepSeekAPI env var');
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server misconfigured: missing API key' }) };
+    }
 
-    const result = await callDeepSeek(api_key, system_prompt || '', prompt || '{"task":"echo"}');
-    log('info', `Request OK`, { duration_ms: Date.now() - start });
+    const result = await callDeepSeek(apiKey, system_prompt || '', prompt || '{"task":"echo"}');
+    log('info', 'Request OK', { duration_ms: Date.now() - start });
 
-    return {
-      statusCode: 200, headers,
-      body: JSON.stringify({ content: result.content, duration_ms: Date.now() - start }),
-    };
+    return { statusCode: 200, headers, body: JSON.stringify({ content: result.content, duration_ms: Date.now() - start }) };
   } catch (e) {
     log('error', 'Request failed', (e as Error).message);
-    return {
-      statusCode: 500, headers,
-      body: JSON.stringify({ error: (e as Error).message, duration_ms: Date.now() - start }),
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: (e as Error).message, duration_ms: Date.now() - start }) };
   }
 };
