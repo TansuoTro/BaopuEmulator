@@ -110,7 +110,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
           conflicts,
           keywords:s.profile.math>70?['数理强']:s.profile.language>70?['语言强']:['综合型'],
           personality_sketch:llmData.personality_sketch||'',
-          future_paths:llmData.future_paths||(llmData.top_majors as unknown as Record<string, string>[]||[]).reduce((acc:Record<string,string>,m)=>{if(m.major_name&&m.future_path)acc[m.major_name]=m.future_path;return acc;},{}),
+          future_paths:llmData.future_paths||(Array.isArray(llmData.top_majors)?(llmData.top_majors as unknown as {major_name?:string;future_path?:string}[]).reduce((acc:Record<string,string>,m)=>{if(m.major_name&&m.future_path)acc[m.major_name]=m.future_path;return acc;},{}):{}),
           final_note:llmData.final_note||'',
           score_logs:s.scoreLogs,
         },
