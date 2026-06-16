@@ -344,39 +344,19 @@ const App: React.FC = () => {
   const handleStart = () => { store.setApiKey('netlify-proxy'); logPhase('idle','gaokao'); store.startAssessment(); };
 
   const handleExport = async () => {
-    const el = document.getElementById('recommend-root');
-    if (!el) return;
     setLoading(true);
     try {
+      const el = document.body;
       const canvas = await html2canvas(el, {
-        backgroundColor: '#080816',
-        scale: 2,
-        allowTaint: true,
-        useCORS: true,
+        backgroundColor: isDark ? '#080816' : '#fafafa',
+        scale: 2, allowTaint: true, useCORS: true,
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight,
         onclone: (clonedDoc) => {
-          // Remove ALL style tags that may contain oklab()
           clonedDoc.querySelectorAll('style').forEach(s => s.remove());
           clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
-          // Inject safe explicit styles
           const safe = clonedDoc.createElement('style');
-          safe.textContent = `
-            * { color-scheme: dark !important; }
-            body, div { background: #080816 !important; color: #e2e8f0 !important; }
-            .bg-white\\/5, .bg-white\\/10, [class*="bg-white"] { background: rgba(255,255,255,0.05) !important; }
-            [class*="bg-black"] { background: rgba(0,0,0,0.2) !important; }
-            [class*="border-white"] { border-color: rgba(255,255,255,0.1) !important; }
-            [class*="text-white"] { color: #e2e8f0 !important; }
-            .text-emerald-300, [class*="text-emerald"] { color: #6ee7b7 !important; }
-            .text-amber-300, [class*="text-amber"] { color: #fcd34d !important; }
-            .text-indigo-300, [class*="text-indigo"] { color: #a5b4fc !important; }
-            .text-rose-300, [class*="text-rose"] { color: #fda4af !important; }
-            .text-purple-300, [class*="text-purple"] { color: #c4b5fd !important; }
-            [class*="bg-indigo"] { background: #4f46e5 !important; }
-            [class*="bg-emerald"] { background: #059669 !important; }
-            [class*="bg-amber"] { background: #d97706 !important; }
-            button { color: white !important; }
-            img, svg, canvas { display: block; }
-          `;
+          safe.textContent = `*{color-scheme:dark!important}body,div{background:#080816!important;color:#e2e8f0!important}.bg-white\\/5{background:rgba(255,255,255,0.05)!important}[class*="text-white"]{color:#e2e8f0!important}.text-emerald-300,[class*="text-emerald"]{color:#6ee7b7!important}.text-amber-300,[class*="text-amber"]{color:#fcd34d!important}.text-indigo-300{color:#a5b4fc!important}[class*="bg-indigo"]{background:#4f46e5!important}[class*="bg-emerald"]{background:#059669!important}button{color:white!important}`;
           clonedDoc.head.appendChild(safe);
         },
       });
