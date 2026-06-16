@@ -215,7 +215,7 @@ const App: React.FC = () => {
   const handleOpenAnswer = async (a: string) => {
     const q = OPEN_QUESTIONS[store.openIndex]; if (!q) return; setLoading(true);
     try { const r = await ds(store.apiKey, buildOpenTagsPrompt(q.stem, a)); store.applyOpenResult(r as { tags?: string[] }); store.answerOpen(a); }
-    catch { store.answerOpen(a); } finally { setLoading(false); }
+    catch { store.answerOpen(a); } finally { if(openRef.current) openRef.current.value = ''; setLoading(false); }
   };
 
   /* Scenario phase: fetch 4 scenario questions */
@@ -245,7 +245,7 @@ const App: React.FC = () => {
       const fresh = useAssessmentStore.getState().profile;
       if (d.updated_profile) { const p = { ...fresh }; for (const k of Object.keys(d.updated_profile)) { const key = k as keyof UserProfile; if (key in p) (p as Record<string, number>)[k] = Math.min(100, Math.max(0, d.updated_profile[k] ?? 50)); } useAssessmentStore.setState({ profile: p }); }
       store.answerScenario(a);
-    } catch (e) { store.answerScenario(a); } finally { setLoading(false); }
+    } catch (e) { store.answerScenario(a); } finally { if(openRef.current) openRef.current.value = ''; setLoading(false); }
   };
 
   /* Recommend phase */
