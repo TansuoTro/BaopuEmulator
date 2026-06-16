@@ -183,5 +183,5 @@ export const DEFAULT_GAOKAO: GaokaoInfo = {
 };
 
 export const PHASE_TOTAL: Record<Phase, number> = {
-  idle:0, gaokao:0, fixed:18, dynamic:5, scenario:4, open:3, recommend:0, error:0,
+  idle:0, gaokao:0, fixed:18, dynamic:5, scenario:4, open:6, recommend:0, error:0,
 };

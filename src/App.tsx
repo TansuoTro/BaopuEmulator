@@ -124,7 +124,7 @@ const ProfileBars: React.FC<{ p: UserProfile }> = ({ p }) => {
     { k:'programming',l:'编程',i:'fa-code' },{ k:'practice',l:'动手',i:'fa-wrench' },{ k:'social',l:'社交',i:'fa-users' },{ k:'teamwork',l:'协作',i:'fa-people-group' },
     { k:'emotion_stability',l:'情绪',i:'fa-heart' },{ k:'decision_confidence',l:'果断',i:'fa-bolt' },{ k:'pressure_tolerance',l:'抗压',i:'fa-shield' },{ k:'long_term_persistence',l:'坚持',i:'fa-hourglass' },
     { k:'critical_thinking',l:'批判',i:'fa-scale-balanced' },{ k:'creativity',l:'创造',i:'fa-lightbulb' },{ k:'rule_compliance',l:'规则',i:'fa-gavel' },
-    { k:'complexity_interest',l:'复杂',i:'fa-circle-nodes' },{ k:'theory_vs_practice',l:'理论',i:'fa-book' },{ k:'independent_vs_team',l:'独立',i:'fa-person' },
+    { k:'complexity_interest',l:'复杂',i:'fa-circle-nodes' },{ k:'theory_vs_practice',l:'理论',i:'fa-book' },{ k:'independent_vs_team',l:'独立',i:'fa-person' },{ k:'stable_vs_change',l:'稳定',i:'fa-anchor' },
   ];
   return <div className="space-y-1.5">{dims.map(b => <Bar key={b.k} label={b.l} val={pf[b.k] ?? 50} icon={b.i} />)}</div>;
 };
@@ -260,7 +260,25 @@ const App: React.FC = () => {
     if (!el) return;
     setLoading(true);
     try {
-      const canvas = await html2canvas(el, { backgroundColor: '#080816', scale: 2 });
+      const canvas = await html2canvas(el, {
+        backgroundColor: '#080816',
+        scale: 2,
+        allowTaint: true,
+        useCORS: true,
+        onclone: (clonedDoc) => {
+          // Strip oklab color functions that html2canvas can't parse
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            * { color-scheme: dark !important; }
+            .text-white\\/90, .text-white\\/80, .text-white\\/70, .text-white\\/60, .text-white\\/50, .text-white\\/40, .text-white\\/30 { color: #e2e8f0 !important; }
+            .bg-white\\/5 { background: rgba(255,255,255,0.05) !important; }
+            .bg-white\\/10 { background: rgba(255,255,255,0.1) !important; }
+            .border-white\\/10 { border-color: rgba(255,255,255,0.1) !important; }
+            .border-white\\/20 { border-color: rgba(255,255,255,0.2) !important; }
+          `;
+          clonedDoc.head.appendChild(style);
+        },
+      });
       const link = document.createElement('a');
       link.download = `BaopuEmulator_${store.nickname || 'report'}_${new Date().toISOString().slice(0,10)}.png`;
       link.href = canvas.toDataURL('image/png');

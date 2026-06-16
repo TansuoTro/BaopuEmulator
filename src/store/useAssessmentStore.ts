@@ -146,7 +146,7 @@ export const useAssessmentStore = create<AssessmentStore>()(
         set({openAnswers:ans,openIndex:idx});
       }
     },
-    addError:m=>set(s=>({errors:[...s.errors,m],phase:'error'})),
+    addError:m=>set(s=>({errors:[...s.errors,m]})),
     clearErrors:()=>set({errors:[]}),
     reset:()=>set({
       phase:'idle',apiKey:'',sessionId:'',

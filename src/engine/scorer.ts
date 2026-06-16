@@ -67,7 +67,7 @@ export function computeConfidence(fixed:number,dynamic:number,profile:UserProfil
   const totalFixed=FIXED_QUESTIONS.length;
   const completion=Math.round((fixed+dynamic*0.6)/(totalFixed+10)*100);
   const covered=Object.values(profile).filter(v=>v!==50).length;
-  const dimension_coverage=Math.min(100,Math.round(covered/18*100));
+  const dimension_coverage=Math.min(100,Math.round(covered/19*100));
   const answer_consistency=Math.max(40,100-conflicts.length*15);
   const open_richness=openTags?.tags.length?Math.min(100,openTags.tags.length*25):30;
   const maxVals=Object.values(profile).filter(v=>v>75||v<25).length;
