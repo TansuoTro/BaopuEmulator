@@ -3,7 +3,7 @@ import { useAssessmentStore } from './store/useAssessmentStore';
 import { FIXED_QUESTIONS, OPEN_QUESTIONS } from './data/questions';
 import { buildDynamicPrompt, buildScorePrompt, buildScenarioPrompt, buildScenarioScorePrompt, buildOpenTagsPrompt, buildRecommendPrompt, SYSTEM_PROMPT } from './llm/prompts';
 import { matchMajors, computeConfidence, detectConflicts } from './engine/scorer';
-import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, GAOKAO_YEARS } from './types';
+import { MajorNode, DynamicQuestion, UserProfile, RecommendationResult as RR, GaokaoInfo, PROVINCES, PROVINCE_MAX_SCORE, GAOKAO_YEARS } from './types';
 import UniverseScene from './components/3d/UniverseScene';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -28,24 +28,67 @@ const GaokaoSection: React.FC<{ onSubmit: (info: GaokaoInfo) => void }> = ({ onS
   const [g, setG] = useState<GaokaoInfo>({ year:2025,province:'',total_score:0,provincial_rank:0,gaokao_type:'新高考',chinese:0,math:0,english:0,composite_score:0,elective_subjects:[],target_provinces:[],career_intention:'不清楚' });
   const u = (k: string, v: unknown) => setG(p => ({ ...p, [k]: v }));
   const can = g.province && g.total_score > 0 && g.chinese > 0 && g.math > 0 && g.english > 0;
+  const maxScore = PROVINCE_MAX_SCORE[g.province] || 750;
+  const isOldGaokao = g.gaokao_type.startsWith('旧高考');
+  const isSci = g.gaokao_type === '旧高考-理综';
+  const electSubs = ['物理','化学','生物','历史','政治','地理','技术'];
   return (
     <div className="max-w-xl mx-auto p-4 sm:p-6 space-y-5 overflow-y-auto" style={{ height: 'calc(100vh - 56px)' }}>
       <h2 className="text-xl font-bold text-center text-white">高考信息</h2>
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
           <div><label className="text-xs text-white/50 block mb-1">年份</label><select value={g.year} onChange={e => u('year', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white">{GAOKAO_YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select></div>
-          <div><label className="text-xs text-white/50 block mb-1">省份</label><select value={g.province} onChange={e => u('province', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white"><option value="">选</option>{PROVINCES.slice(0,31).map(p => <option key={p}>{p}</option>)}</select></div>
-          <div><label className="text-xs text-white/50 block mb-1">类型</label><select value={g.gaokao_type} onChange={e => u('gaokao_type', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white"><option value="新高考">新高考</option><option value="旧高考-理综">旧高考-理综</option><option value="旧高考-文综">旧高考-文综</option></select></div>
+          <div><label className="text-xs text-white/50 block mb-1">省份</label><select value={g.province} onChange={e => u('province', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white"><option value="">请选择</option>{PROVINCES.slice(0,31).map(p => <option key={p}>{p}</option>)}</select>
+            {g.province && maxScore !== 750 && <p className="text-[10px] text-amber-400/60 mt-1">* 该省满分{maxScore}分（上海660/海南900）</p>}
+          </div>
+          <div><label className="text-xs text-white/50 block mb-1">类型</label><select value={g.gaokao_type} onChange={e => u('gaokao_type', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white"><option value="新高考">新高考 (3+1+2)</option><option value="旧高考-理综">旧高考-理综</option><option value="旧高考-文综">旧高考-文综</option></select>
+            <p className="text-[10px] text-white/30 mt-1">{g.gaokao_type === '新高考' ? '语数英各150 + 3门选考各100(赋分制)' : '语数英各150 + ' + (isSci ? '理综' : '文综') + '300'}</p>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="text-xs text-white/50 block mb-1">总分</label><input type="number" value={g.total_score || ''} onChange={e => u('total_score', +e.target.value)} placeholder="0~750" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
+          <div><label className="text-xs text-white/50 block mb-1">总分 (满分{maxScore})</label><input type="number" value={g.total_score || ''} onChange={e => u('total_score', +e.target.value)} placeholder={`0~${maxScore}`} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
           <div><label className="text-xs text-white/50 block mb-1">排名(可选)</label><input type="number" value={g.provincial_rank || ''} onChange={e => u('provincial_rank', +e.target.value)} placeholder="选填" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <div><label className="text-xs text-white/50 block mb-1">语文</label><input type="number" value={g.chinese || ''} onChange={e => u('chinese', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
-          <div><label className="text-xs text-white/50 block mb-1">数学</label><input type="number" value={g.math || ''} onChange={e => u('math', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
-          <div><label className="text-xs text-white/50 block mb-1">英语</label><input type="number" value={g.english || ''} onChange={e => u('english', +e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
+          <div><label className="text-xs text-white/50 block mb-1">语文 (150)</label><input type="number" value={g.chinese || ''} onChange={e => u('chinese', +e.target.value)} placeholder="0~150" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
+          <div><label className="text-xs text-white/50 block mb-1">数学 (150)</label><input type="number" value={g.math || ''} onChange={e => u('math', +e.target.value)} placeholder="0~150" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
+          <div><label className="text-xs text-white/50 block mb-1">英语 (150)</label><input type="number" value={g.english || ''} onChange={e => u('english', +e.target.value)} placeholder="0~150" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" /></div>
         </div>
+
+        {/* 旧高考: 理综/文综 300分 */}
+        {isOldGaokao ? (
+          <div>
+            <label className="text-xs text-white/50 block mb-1">{isSci ? '理科综合' : '文科综合'} (300)</label>
+            <input type="number" value={g.composite_score || ''} onChange={e => u('composite_score', +e.target.value)} placeholder="0~300" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" />
+          </div>
+        ) : (
+          /* 新高考: 选考科目，赋分制100分/门 */
+          <div>
+            <label className="text-xs text-white/50 block mb-2">选考科目（点击选择，赋分制100分/门）</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {electSubs.map(sub => {
+                const sel = g.elective_subjects.find(s => s.name === sub);
+                return (
+                  <button key={sub} type="button" onClick={() => {
+                    if (sel) { u('elective_subjects', g.elective_subjects.filter(s => s.name !== sub)); }
+                    else if (g.elective_subjects.length < 3) { u('elective_subjects', [...g.elective_subjects, { name: sub, score: 0 }]); }
+                  }} className={`px-3 py-1.5 rounded-full text-xs transition-colors ${sel ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-400/50' : 'border border-white/10 text-white/50 hover:border-white/30'}`}>
+                    {sub}
+                  </button>
+                );
+              })}
+            </div>
+            {g.elective_subjects.map(sub => (
+              <div key={sub.name} className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-white/50 w-8">{sub.name}</span>
+                <input type="number" value={sub.score || ''} onChange={e => {
+                  const v = +e.target.value;
+                  u('elective_subjects', g.elective_subjects.map(s => s.name === sub.name ? { ...s, score: v } : s));
+                }} placeholder="0~100" className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white" />
+              </div>
+            ))}
+          </div>
+        )}
         <div>
           <label className="text-xs text-white/50 block mb-1">毕业意🧭</label>
           <select value={g.career_intention} onChange={e => u('career_intention', e.target.value)} className="w-full p-2 rounded bg-white/5 border border-white/10 text-sm text-white">
