@@ -178,6 +178,7 @@ const App: React.FC = () => {
   const [selectedMajor, setSelectedMajor] = useState<MajorNode | null>(null);
   const [followupHint, setFollowupHint] = useState('');
   const [tookGaokao, setTookGaokao] = useState<boolean | null>(null);
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const loadingRef = useRef(false);
   const openRef = useRef<HTMLTextAreaElement>(null);
   const { phase, theme, profile } = store;
@@ -349,7 +350,11 @@ const App: React.FC = () => {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#080816] text-white' : 'bg-zinc-50 text-zinc-900'}`} data-theme={isDark ? 'dark' : 'light'} onClick={spawn}>
       {/* Header */}
       <header className={`border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${isDark ? 'bg-black/20 border-white/5' : 'bg-white/80 border-zinc-200'}`}>
-        <div className="flex items-center gap-3"><i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator V3</span></div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => { if (phase !== 'idle' && tookGaokao) setShowRestartConfirm(true); else handleRestart(); }} className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer" title="点击返回首页">
+            <i className="fas fa-graduation-cap text-indigo-400 text-xl" /> <span className="font-bold">抱朴 · BaopuEmulator</span>
+          </button>
+        </div>
         <div className="flex items-center gap-3">
           {inAssess && <span className="text-xs text-white/40">{phase === 'fixed' ? '固定' : phase === 'dynamic' ? '消歧' : phase === 'scenario' ? '情景' : '开放'} {curQ + 1}/{totalQ}</span>}
           <button onClick={store.toggleTheme} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-zinc-100 text-zinc-500'}`}><i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`} /></button>
@@ -519,6 +524,21 @@ const App: React.FC = () => {
 
       {/* Loading overlay */}
       {loading && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center"><div className="flex items-center gap-3 text-white/70"><i className="fas fa-spinner fa-spin text-2xl text-indigo-400" />AI分析中...</div></div>}
+
+      {/* Restart confirmation modal */}
+      {showRestartConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowRestartConfirm(false)}>
+          <div className={`p-6 rounded-xl border max-w-sm mx-4 ${isDark ? 'bg-[#1a1a2e] border-white/10' : 'bg-white border-zinc-200'}`} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-2"><i className="fas fa-triangle-exclamation text-amber-400 mr-2" />确认返回首页？</h3>
+            <p className="text-sm text-white/50 mb-4">当前所有测评进度将会丢失，确定要重新开始吗？</p>
+            <div className="flex gap-3">
+              <button onClick={() => { setShowRestartConfirm(false); handleRestart(); setTookGaokao(null); }} className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold">确定返回</button>
+              <button onClick={() => setShowRestartConfirm(false)} className="flex-1 py-2 rounded-lg border border-white/20 text-white/60 hover:bg-white/10 text-sm">取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Particles />
     </div>
   );
